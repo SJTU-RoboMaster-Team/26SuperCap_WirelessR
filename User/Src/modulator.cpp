@@ -3,7 +3,7 @@
 #include "main.h"
 #include "../Inc/ask_task.h"
 
-extern MP4201_Handle_t mp4201_dev;
+extern MP4201 mp4201_dev;
 
 void Modulator::stop() {
     modulator_state_ = STOP;
@@ -85,7 +85,7 @@ void Modulator::handle() {
 }
 
 uint16_t Modulator::wpt_msg_update() {
-    uint8_t power = (uint8_t)(mp4201_dev.power_meas / 150.f * 255);
-    uint8_t sw = mp4201_dev.wpt_switch_flag_ ? 1 : 0;
+    uint8_t power = (uint8_t)(mp4201_dev.getPower() / 150.f * 255);
+    uint8_t sw = mp4201_dev.getChargingFlag() ? 1 : 0;
     return ((uint16_t)sw << 8) | (uint16_t)power;
 }

@@ -149,7 +149,16 @@ typedef struct {
     uint8_t err_status[2];
 
     // --- 无线充电 ---
-    uint8_t wpt_switch_flag_;
+    uint8_t charging_flag;
+
+    // --- 初始化（非阻塞重试）控制 ---
+    // 当调用 MP4201_Init_Start 后，如果首次初始化失败，会设置 init_pending = 1
+    // 并在之后通过 MP4201_Init_Tick 周期性尝试初始化（非阻塞重试）。
+    uint8_t init_pending;               // 是否还有初始化重试待处理
+    uint32_t init_retry_interval_ms;    // 重试间隔（毫秒）
+    uint32_t init_last_attempt;         // 上次尝试时间（HAL_GetTick）
+    uint8_t init_retry_count;           // 已尝试次数
+    uint8_t init_max_retries;           // 最大重试次数（0 表示无限重试）
 } MP4201_Handle_t;
 
 /* ==============================================================================
@@ -158,13 +167,20 @@ typedef struct {
 
 // 初始化
 HAL_StatusTypeDef MP4201_Init(MP4201_Handle_t* dev, I2C_HandleTypeDef* hi2c);
+// 非阻塞初始化：尝试一次初始化，失败后按照 retry_interval_ms 在后台重试
+HAL_StatusTypeDef MP4201_Init_Start(MP4201_Handle_t* dev, I2C_HandleTypeDef* hi2c, uint32_t retry_interval_ms, uint8_t max_retries);
+// 在主循环/4kHz 处理（或任意定时任务）中周期性调用：会在到达重试间隔时发起新的初始化尝试
+// 返回值: HAL_OK=已初始化成功, HAL_BUSY=仍在重试中, HAL_ERROR=达到最大重试并失败
+HAL_StatusTypeDef MP4201_Init_Tick(MP4201_Handle_t* dev);
+// 直接触发一次初始化尝试（立即调用），返回 MP4201_Init 的状态
+HAL_StatusTypeDef MP4201_AttemptInit(MP4201_Handle_t* dev, I2C_HandleTypeDef* hi2c);
+
 HAL_StatusTypeDef MP4201_ConfigureSafety(MP4201_Handle_t* dev, float maxVout, float maxIout);
 HAL_StatusTypeDef MP4201_Enable(MP4201_Handle_t* dev, uint8_t enable);
 
 /**
- * @brief 配置无线充电输入保护 (关键)
+ * @brief 配置无线充电输入保护
  * @param minVin: 最低输入电压限制 (V)。当无线充输入低于此值时，MP4201会自动减小充电功率。
- * 建议设为无线充空载电压的 80% 左右。
  */
 HAL_StatusTypeDef MP4201_ConfigWirelessInput(MP4201_Handle_t* dev, float minVin);
 
@@ -173,7 +189,7 @@ void MP4201_SetCV_Target(MP4201_Handle_t* dev, float voltage);
 void MP4201_SetCC_Target(MP4201_Handle_t* dev, float current);
 void MP4201_SetDirection(MP4201_Handle_t* dev, uint8_t direction);
 // 设置恒功率目标及 PI 参数
-// 建议参数: Kp=0.05, Ki=0.005 (需根据实际负载电容大小调试)
+// 建议参数: Kp=0.00, Ki=0.005 (需根据实际负载电容大小调试)
 void MP4201_SetCP_Target(MP4201_Handle_t* dev, float power, float Kp, float Ki);
 
 // 核心循环
@@ -207,7 +223,7 @@ public:
         h_.controlMode = MP4201_MODE_CV;
     }
 
-    // Initialize device (calls C API)
+    // Initialize device (calls C API) 但一般用不到，main.c不支持类
     HAL_StatusTypeDef init(I2C_HandleTypeDef* hi2c = nullptr) {
         if (hi2c) h_.hi2c = hi2c;
         return MP4201_Init(&h_, h_.hi2c);
@@ -246,11 +262,12 @@ public:
     float getIin() const { return h_.iin_meas; }
     float getIout() const { return h_.iout_meas; }
     float getPower() const { return h_.power_meas; }
+    auto getChargingFlag() const {return h_.charging_flag;}
     uint32_t getErrorCount() const { return h_.errorCount; }
 
     // Expose the underlying C handle if raw access is required
-    MP4201_Handle_t* handle() { return &h_; }
-    const MP4201_Handle_t* handle() const { return &h_; }
+    MP4201_Handle_t* get_handler() { return &h_; }
+    const MP4201_Handle_t* get_handler() const { return &h_; }
 
 private:
     MP4201_Handle_t h_;

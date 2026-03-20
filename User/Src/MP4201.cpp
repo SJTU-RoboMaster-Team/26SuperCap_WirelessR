@@ -31,7 +31,7 @@ HAL_StatusTypeDef MP4201_Init(MP4201_Handle_t* dev, I2C_HandleTypeDef* hi2c) {
     dev->calculated_vout_cmd = 0;
     dev->calculated_iout_cmd = 0;
     dev->errorCount = 0;
-    dev->wpt_switch_flag_ = false;
+    dev->charging_flag = false;
     // 初始化 PI
     dev->pi.Kp = 0.1f;
     dev->pi.Ki = 0.01f;
@@ -39,7 +39,7 @@ HAL_StatusTypeDef MP4201_Init(MP4201_Handle_t* dev, I2C_HandleTypeDef* hi2c) {
 
     // 1. 硬件激活
     HAL_GPIO_WritePin(GPIOC, GPIO_PIN_2, GPIO_PIN_SET);
-    HAL_Delay(50); // 等待启动
+    HAL_Delay(10); // 等待启动
 
     // 2. 检查设备 (Ping)
     if (HAL_I2C_IsDeviceReady(dev->hi2c, dev->devAddr, 3, 100) != HAL_OK) {
@@ -51,22 +51,19 @@ HAL_StatusTypeDef MP4201_Init(MP4201_Handle_t* dev, I2C_HandleTypeDef* hi2c) {
     if (HAL_I2C_Mem_Write(dev->hi2c, dev->devAddr, REG_OPERATION, I2C_MEMADD_SIZE_8BIT, &stop_cmd, 1, 100) != HAL_OK) {
         return HAL_ERROR;
     }
-    HAL_Delay(500);
+    HAL_Delay(300);
 
     // 4. 修改方向与模式
     uint8_t ctrl1_val = 0;
     // 即使读取失败，我们也给一个安全的默认值 (Internal FB, Hiccup Mode)
-    // Default 0xD0 is usually 0x08 or similar.
 
     if (HAL_I2C_Mem_Read(dev->hi2c, dev->devAddr, REG_MFR_CTRL1, I2C_MEMADD_SIZE_8BIT, &ctrl1_val, 1, 100) != HAL_OK) {
         ctrl1_val = 0x08; // 读失败时的安全默认值 (Bit 3=1)
     }
 
     ctrl1_val |= (1 << 7); // Bit 7: VIN -> OUT (DIR)
-    ctrl1_val |= (1 << 3); // 【关键修改】Bit 3: 强制置 1 (Internal Feedback Mode)
+    ctrl1_val |= (1 << 3); // Bit 3: 强制置 1 (Internal Feedback Mode)
     ctrl1_val |= (1 << 2); // Bit 2: CC Mode (Current Limit Mode)
-    // 清除 Dead Time 位 (Bit 1:0) 保持默认，或者保留原值
-    // 建议保留原值，这里只操作我们需要确定的位
 
     if (HAL_I2C_Mem_Write(dev->hi2c, dev->devAddr, REG_MFR_CTRL1, I2C_MEMADD_SIZE_8BIT, &ctrl1_val, 1, 100) != HAL_OK) {
         return HAL_ERROR;
@@ -79,7 +76,7 @@ HAL_StatusTypeDef MP4201_Init(MP4201_Handle_t* dev, I2C_HandleTypeDef* hi2c) {
 }
 
 /**
-  * @brief  配置安全参数 (阻塞式)
+  * @brief  配置安全参数
   */
 HAL_StatusTypeDef MP4201_ConfigureSafety(MP4201_Handle_t* dev, float maxVout, float maxIout) {
     dev->maxVout = maxVout;
@@ -91,15 +88,14 @@ HAL_StatusTypeDef MP4201_ConfigureSafety(MP4201_Handle_t* dev, float maxVout, fl
   * @brief  配置无线充电保护
   */
 HAL_StatusTypeDef MP4201_ConfigWirelessInput(MP4201_Handle_t* dev, float minVin) {
-    // 1. 开启 VIN Regulation 功能 (MFR_OVP_CTRL bit 7)
-    uint8_t config_byte = 0b11011011; // 1000 1000
+    uint8_t config_byte = 0b11011011;
 
     if (HAL_I2C_Mem_Write(dev->hi2c, dev->devAddr, REG_MFR_OVP_CTRL, I2C_MEMADD_SIZE_8BIT, &config_byte, 1, 100) !=
         HAL_OK) {
         return HAL_ERROR;
     }
 
-    // 2. 设置阈值电压 (VIN_REG_THLD)
+    // 设置阈值电压 (VIN_REG_THLD)
     uint16_t vin_reg_val = (uint16_t)(minVin * SCALE_VOUT_SET_LSB_INV); // 系数与 VOUT 相同 (0.02V/LSB)
     return MP4201_WriteReg_Blocking(dev, REG_VIN_REG_THLD, vin_reg_val);
 }
@@ -387,7 +383,7 @@ static void MP4201_RunControlAlgorithm(MP4201_Handle_t* dev) {
             dev->isCVphase = false;
         }
 
-        // 调试变量更新 (假设外部有定义 feed_forward_debug)
+        // 调试变量更新 feed_forward_debug
         // update C++ wrapper debug value if available
 #ifdef __cplusplus
         MP4201::feedForwardDebug = i_feed_forward;
@@ -395,12 +391,10 @@ static void MP4201_RunControlAlgorithm(MP4201_Handle_t* dev) {
         (void)0;
 #endif
 
-        // --------------------------------------------------------
         // Step 4: 计算最终输出电流 (PI + 前馈)
-        // --------------------------------------------------------
         last_iout = next_iout; // 保存上一轮的值
 
-        // PI 输出公式: I_out = (Kp * Error) + Integral + FeedForward
+        // I_out = (Kp * Error) + Integral + FeedForward
         next_iout = (error_P * dev->pi.Kp) + dev->pi.integral_sum + i_feed_forward;
 
         // --- 输出锁定逻辑 (Hold Logic) ---
@@ -412,9 +406,7 @@ static void MP4201_RunControlAlgorithm(MP4201_Handle_t* dev) {
             next_iout = last_iout;
         }
 
-        // --------------------------------------------------------
         // Step 5: 最终安全限幅
-        // --------------------------------------------------------
         if (next_iout >= dev->maxIout) {
             next_iout = dev->maxIout;
             dev->isMaxIout = true; // 标记达到最大电流
@@ -425,9 +417,7 @@ static void MP4201_RunControlAlgorithm(MP4201_Handle_t* dev) {
         // 最小电流限制 (防止设为0导致关机或异常)
         if (next_iout < 0.1f) { next_iout = 0.1f; } // 建议加一个非零下限
 
-        // --------------------------------------------------------
         // Step 6: 准备寄存器数据
-        // --------------------------------------------------------
         dev->calculated_iout_cmd = next_iout; // 记录用于调试
 
         // 写入 REG_IOUT_OC_FAULT_LIMIT (电流限制寄存器)
@@ -535,4 +525,81 @@ void MP4201_CheckStatus(MP4201_Handle_t* dev) {
     if (dev->err_status[0] != 0x00) {
         dev->errorCount++;
     }
+}
+
+/**
+  * @brief  非阻塞初始化：启动一次初始化尝试，失败后按照给定间隔重试
+  */
+HAL_StatusTypeDef MP4201_Init_Start(MP4201_Handle_t* dev, I2C_HandleTypeDef* hi2c, uint32_t retry_interval_ms, uint8_t max_retries) {
+    if (dev == NULL) return HAL_ERROR;
+
+    if (hi2c) dev->hi2c = hi2c;
+
+    // 初始化控制字段
+    dev->init_pending = 0;
+    dev->init_retry_interval_ms = retry_interval_ms;
+    dev->init_last_attempt = 0;
+    dev->init_retry_count = 0;
+    dev->init_max_retries = max_retries;
+
+    // 立即尝试一次（可能会阻塞短时间）
+    HAL_StatusTypeDef st = MP4201_AttemptInit(dev, dev->hi2c);
+    if (st == HAL_OK) {
+        dev->init_pending = 0;
+        dev->init_retry_count = 0;
+        return HAL_OK;
+    }
+
+    // 失败：设置为 pending，并记录首次尝试时间/次数
+    dev->init_pending = 1;
+    dev->init_last_attempt = HAL_GetTick();
+    dev->init_retry_count = 1;
+    return HAL_BUSY;
+}
+
+/**
+  * @brief  立即触发一次初始化尝试（同步，调用会阻塞直到 MP4201_Init 返回）
+  */
+HAL_StatusTypeDef MP4201_AttemptInit(MP4201_Handle_t* dev, I2C_HandleTypeDef* hi2c) {
+    if (dev == NULL) return HAL_ERROR;
+    if (hi2c) dev->hi2c = hi2c;
+    return MP4201_Init(dev, dev->hi2c);
+}
+
+/**
+  * @brief  在主循环或定时处理函数中周期性调用此函数来执行重试逻辑
+  * @return HAL_OK: 已初始化成功或无需重试
+  *         HAL_BUSY: 仍在重试中
+  *         HAL_ERROR: 达到最大重试次数仍失败
+  */
+HAL_StatusTypeDef MP4201_Init_Tick(MP4201_Handle_t* dev) {
+    if (dev == NULL) return HAL_ERROR;
+
+    // 如果没有挂起的重试，立即返回 OK
+    if (!dev->init_pending) return HAL_OK;
+
+    uint32_t now = HAL_GetTick();
+    uint32_t elapsed = (now - dev->init_last_attempt);
+
+    if (elapsed < dev->init_retry_interval_ms) {
+        return HAL_BUSY; // 尚未到达下一次重试时间
+    }
+
+    // 到时间再试一次
+    HAL_StatusTypeDef st = MP4201_AttemptInit(dev, dev->hi2c);
+    dev->init_last_attempt = now;
+    if (st == HAL_OK) {
+        dev->init_pending = 0;
+        dev->init_retry_count = 0;
+        return HAL_OK;
+    }
+
+    // 失败：更新计数并判断是否超出最大重试次数
+    dev->init_retry_count++;
+    if (dev->init_max_retries != 0 && dev->init_retry_count >= dev->init_max_retries) {
+        dev->init_pending = 0; // 停止重试
+        return HAL_ERROR; // 达到上限仍然失败
+    }
+
+    return HAL_BUSY;
 }
