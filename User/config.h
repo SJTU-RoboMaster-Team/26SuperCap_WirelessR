@@ -1,0 +1,8 @@
+//
+// Created by xuhao on 2026/3/20.
+//
+
+#ifndef SUPERCAP_WIRELESSR_V2_CONFIG_H
+#define SUPERCAP_WIRELESSR_V2_CONFIG_H
+
+#endif //SUPERCAP_WIRELESSR_V2_CONFIG_H
