@@ -1,6 +1,6 @@
 /**
   ******************************************************************************
-  * @file    mp4201.c
+  * @file    mp4201.cpp
   * @brief   MP4201 DMA-based Async Driver Implementation with PI Control
   * Optimized for Wireless Charging & Supercapacitor Load
   ******************************************************************************

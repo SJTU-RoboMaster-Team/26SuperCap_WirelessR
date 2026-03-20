@@ -6,10 +6,14 @@
 #define LOAD_MODULATION_H
 
 #include "main.h"
-#include "encoder.h"
 #include "../Inc/timer.h"
 
 #define MODULATION_PERIOD 42500
+
+// Encoding definitions
+#define ASK_START_SIGN 0x1FE
+#define ASK_STOP_SIGN 0x00
+#define ASK_DATA_LEN 9
 #define FRAME_LEN (8+1+9+1+1)
 
 class Modulator {
@@ -21,8 +25,8 @@ public:
         LOW,
         HIGH
     };
-    LevelState last_level_state_; // level of the second half of last period
-    LevelState next_level_state_; // level of the first half of this period
+    LevelState second_level_state_; // 后半周期电平
+    LevelState first_level_state_; // 前半周期电平
 
     enum ModulatorState {
         START,
@@ -38,41 +42,68 @@ public:
         TIMEOUT
     };
 
-    Modulator(Encoder &encoder, FreqMeter &freq_meter):encoder_(encoder), freq_meter_(freq_meter) {
+    // 内嵌类 Encoder
+    class Encoder {
+    public:
+        enum EncoderState {
+            START,
+            STOP,
+            BUSY,
+            IDLE,
+            FINISH
+        } encoder_state_ = IDLE;
+
+        Encoder() { encoder_state_ = STOP; frame_ = 0; }
+
+        uint16_t data_ = 0;
+        uint32_t frame_ = 0;
+        uint8_t parity_ = 0;
+
+        void reset() { frame_ = 0; }
+        // void handle(); // will be implemented in modulator.cpp if needed or left unused
+    } encoder_;
+
+    // 内嵌结构体 WPT message type
+    struct WPTMsg {
+        uint8_t wpt_power_ = 0; // LSB
+        bool switch_flag_ = false; // MSB
+    } wpt_msg_;
+
+    explicit Modulator(FreqMeter &freq_meter):freq_meter_(freq_meter) {
         index_ = 0;
-        last_level_state_ = LOW;
-        next_level_state_ = LOW;
+        second_level_state_ = LOW;
+        first_level_state_ = LOW;
         first_ = true;
         revert_this_period_ = false;
-        half_phase_ = false; // start at first-half expected
+        half_phase_ = false;
     }
 
-    Encoder &encoder_;
     FreqMeter &freq_meter_;
     uint8_t index_;
     uint32_t data_frame_ = 0;
     bool first_;
 
-    // flag to indicate whether this full period requires a mid-period level revert
+    // 周期中是否翻转标志
     bool revert_this_period_ = false;
 
-    // phase flag: false => first half of period; true => second half of period
+    // 周期中标志
     bool half_phase_ = false;
 
     void start();
     void stop();
-    void handle();        // unified handler called at half-period rate (e.g., TIM6 4kHz)
+    void handle();        // 循环中调用
     void reset() {
         first_ = true;
         index_ = 0;
         data_frame_ = 0;
-        last_level_state_ = LOW;
-        next_level_state_ = LOW;
+        second_level_state_ = LOW;
+        first_level_state_ = LOW;
         revert_this_period_ = false;
         half_phase_ = false;
+        encoder_.reset();
     }
-
-    ModulatorStatus set_next_frame();
+    uint16_t wpt_msg_update();
+    void set_next_frame();
 };
 
 #endif //LOAD_MODULATION_H

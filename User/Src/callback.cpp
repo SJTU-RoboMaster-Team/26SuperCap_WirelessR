@@ -1,6 +1,5 @@
 #include "../Inc/callback.h"
 #include "../Inc/MP4201.h"
-#include "../Inc/encoder.h"
 #include "../Inc/timer.h"
 #include "../Inc/modulator.h"
 
@@ -10,9 +9,8 @@ extern TIM_HandleTypeDef htim6;
 extern TIM_HandleTypeDef htim7; // ASK负载调制频率 4kHz
 extern HRTIM_HandleTypeDef hhrtim1;
 MP4201_Handle_t mp4201_dev; // 全局 MP4201 设备句柄
-Encoder encoder;
 FreqMeter modulator_loop(1);
-Modulator load_modulator(encoder, modulator_loop);
+Modulator load_modulator(modulator_loop);
 
 // 定时器回调
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef* htim) {
