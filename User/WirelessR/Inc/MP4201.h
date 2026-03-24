@@ -159,8 +159,9 @@ typedef struct {
  * ============================================================================== */
 
 // 初始化
+    HAL_StatusTypeDef MP4201_ConfigBasic(MP4201_Handle_t* dev);
 HAL_StatusTypeDef MP4201_Init(MP4201_Handle_t* dev, I2C_HandleTypeDef* hi2c);
-HAL_StatusTypeDef MP4201_ConfigureSafety(MP4201_Handle_t* dev, float maxVout, float maxIout);
+HAL_StatusTypeDef MP4201_ConfigureMaximum(MP4201_Handle_t* dev, float maxVout, float maxIout);
 HAL_StatusTypeDef MP4201_Init_Retry(MP4201_Handle_t* dev, I2C_HandleTypeDef* hi2c, uint8_t retries, uint32_t delay_ms);
 HAL_StatusTypeDef MP4201_Enable(MP4201_Handle_t* dev, uint8_t enable);
 
@@ -223,7 +224,11 @@ public:
     }
 
     HAL_StatusTypeDef configureSafety(float maxVout, float maxIout) {
-        return MP4201_ConfigureSafety(&h_, maxVout, maxIout);
+        return MP4201_ConfigureMaximum(&h_, maxVout, maxIout);
+    }
+
+    HAL_StatusTypeDef configBasic() {
+        return MP4201_ConfigBasic(&h_);
     }
 
     HAL_StatusTypeDef configWirelessInput(float minVin) {

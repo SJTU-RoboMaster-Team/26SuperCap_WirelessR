@@ -32,47 +32,57 @@ HAL_StatusTypeDef MP4201_Init(MP4201_Handle_t* dev, I2C_HandleTypeDef* hi2c) {
     dev->errorCount = 0;
     dev->wpt_switch_flag_ = false;
     dev->is_connected = false;
+
     // 初始化 PI
-    dev->pi.Kp = 0.1f;
+    dev->pi.Kp = 0.0f;
     dev->pi.Ki = 0.01f;
     dev->pi.integral_sum = 0.0f;
 
-    // 1. 硬件激活
-    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_2, GPIO_PIN_SET);
-    HAL_Delay(50); // 等待启动
+    // 1. 硬件激活 (优化：避免重试时反复产生 50ms 延时)
+    if (HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_2) == GPIO_PIN_RESET) {
+        HAL_GPIO_WritePin(GPIOC, GPIO_PIN_2, GPIO_PIN_SET);
+        HAL_Delay(50); // 仅首次冷启动时需要等待
+    }
 
-    // 2. 检查设备 (Ping)
-    if (HAL_I2C_IsDeviceReady(dev->hi2c, dev->devAddr, 3, 100) != HAL_OK) {
+    // 2. 检查设备 (Ping) - 将超时时间从 100ms 缩短到 10ms，提升非阻塞轮询速度
+    if (HAL_I2C_IsDeviceReady(dev->hi2c, dev->devAddr, 3, 10) != HAL_OK) {
         return HAL_ERROR;
     }
+
     dev->is_connected = true;
-    // 3. 软关机 (Soft Shutdown) - 必须先关机才能改方向
+    return HAL_OK;
+}
+
+/**
+  * @brief  基础硬件配置 (软关机、方向、控制环路等)，连接成功后仅执行一次
+  */
+HAL_StatusTypeDef MP4201_ConfigBasic(MP4201_Handle_t* dev) {
+    if (!dev->is_connected)
+        return HAL_ERROR;
+
+    // 软关机 (Soft Shutdown) - 必须先关机才能改方向
     uint8_t stop_cmd = 0x00;
     if (HAL_I2C_Mem_Write(dev->hi2c, dev->devAddr, REG_OPERATION, I2C_MEMADD_SIZE_8BIT, &stop_cmd, 1, 100) != HAL_OK) {
         return HAL_ERROR;
     }
-    HAL_Delay(200);
+    HAL_Delay(200); // 这是必要的放电延时，由于它仅在连接成功的时刻执行一次，所以可以接受阻塞
 
-    // 4. 修改方向与模式
+    // 修改方向与模式
     uint8_t ctrl1_val = 0;
-    // 即使读取失败，我们也给一个安全的默认值 (Internal FB, Hiccup Mode)
-    // Default 0xD0 is usually 0x08 or similar.
-
+    // 即使读取失败，我们也给一个安全的默认值
     if (HAL_I2C_Mem_Read(dev->hi2c, dev->devAddr, REG_MFR_CTRL1, I2C_MEMADD_SIZE_8BIT, &ctrl1_val, 1, 100) != HAL_OK) {
         ctrl1_val = 0x08; // 读失败时的安全默认值 (Bit 3=1)
     }
 
     ctrl1_val |= (1 << 7); // Bit 7: VIN -> OUT (DIR)
-    ctrl1_val |= (1 << 3); // 【关键修改】Bit 3: 强制置 1 (Internal Feedback Mode)
+    ctrl1_val |= (1 << 3); // Bit 3: 强制置 1 (Internal Feedback Mode)
     ctrl1_val |= (1 << 2); // Bit 2: CC Mode (Current Limit Mode)
-    // 清除 Dead Time 位 (Bit 1:0) 保持默认，或者保留原值
-    // 建议保留原值，这里只操作我们需要确定的位
 
     if (HAL_I2C_Mem_Write(dev->hi2c, dev->devAddr, REG_MFR_CTRL1, I2C_MEMADD_SIZE_8BIT, &ctrl1_val, 1, 100) != HAL_OK) {
         return HAL_ERROR;
     }
 
-    // 5. 更新本地状态并返回
+    // 更新本地状态并返回
     dev->isEnabled = 0;
 
     return HAL_OK;
@@ -114,14 +124,14 @@ HAL_StatusTypeDef MP4201_Init_Retry(MP4201_Handle_t* dev, I2C_HandleTypeDef* hi2
 /**
   * @brief  配置安全参数 (阻塞式)
   */
-HAL_StatusTypeDef MP4201_ConfigureSafety(MP4201_Handle_t* dev, float maxVout, float maxIout) {
+HAL_StatusTypeDef MP4201_ConfigureMaximum(MP4201_Handle_t* dev, float maxVout, float maxIout) {
     dev->maxVout = maxVout;
     dev->maxIout = maxIout;
     return HAL_OK;
 }
 
 /**
-  * @brief  配置无线充电保护
+  * @brief  配置无线充电输入端保护
   */
 HAL_StatusTypeDef MP4201_ConfigWirelessInput(MP4201_Handle_t* dev, float minVin) {
     // 1. 开启 VIN Regulation 功能 (MFR_OVP_CTRL bit 7)
@@ -140,16 +150,7 @@ HAL_StatusTypeDef MP4201_ConfigWirelessInput(MP4201_Handle_t* dev, float minVin)
 HAL_StatusTypeDef MP4201_Enable(MP4201_Handle_t* dev, uint8_t enable) {
     uint8_t data = enable ? 0x80 : 0x00;
     dev->isEnabled = enable;
-
-    // 无扰切换：启用时，将 PI 积分器的起点设为当前超级电容的实际电压
-    if (enable && dev->controlMode == MP4201_MODE_CP) {
-        if (dev->iout_meas > 0.5f) {
-            dev->pi.integral_sum = dev->iout_meas;
-        } else {
-            // 如果电流极低，从 0 开始
-            dev->pi.integral_sum = 0.0f;
-        }
-    }
+    dev->pi.integral_sum = 0.0f;
 
     HAL_StatusTypeDef status = HAL_I2C_Mem_Write(dev->hi2c,
                                                  dev->devAddr,
@@ -158,10 +159,6 @@ HAL_StatusTypeDef MP4201_Enable(MP4201_Handle_t* dev, uint8_t enable) {
                                                  &data,
                                                  1,
                                                  100);
-    if (status != HAL_OK) {
-        // HAL_GPIO_WritePin(GPIOC, GPIO_PIN_2, GPIO_PIN_RESET); // 硬件强行停止
-        // Error_Handler();
-    }
     return status;
 }
 
@@ -320,7 +317,6 @@ void MP4201_OnRxCplt(MP4201_Handle_t* dev) {
             }
             break;
     }
-    // WS2812_Send();
 }
 
 void MP4201_OnTxCplt(MP4201_Handle_t* dev) {
@@ -347,9 +343,7 @@ static void MP4201_RunControlAlgorithm(MP4201_Handle_t* dev) {
         return;
     }
 
-    // ============================================================
-    // 模式 A: 恒功率控制 (CP Mode) - 核心算法
-    // ============================================================
+    // 模式 A: 恒功率控制
     if (dev->controlMode == MP4201_MODE_CP) {
         // 使用 static 变量保存历史状态，用于下一轮计算
         static float next_iout = 0.0f;
@@ -367,15 +361,11 @@ static void MP4201_RunControlAlgorithm(MP4201_Handle_t* dev) {
             schmitt_trigger_CV_phase = 0; // 退出 CV 临界区
         }
 
-        // --------------------------------------------------------
-        // Step 1: 误差计算 (目标功率 - 实际测量功率)
-        // --------------------------------------------------------
+        // 误差计算 (目标功率 - 实际测量功率)
         float error_P = dev->targetVal - dev->power_meas;
 
-        // --------------------------------------------------------
-        // Step 2: 积分器更新 (带抗饱和与重置机制)
-        // --------------------------------------------------------
-        // 积分抗饱和逻辑 (Anti-windup):
+        // 积分器更新 (带抗饱和与重置机制)
+        // 积分抗饱和逻辑
         // 允许积分累加的条件：
         // 1. 当前输出电流未达到硬件最大值 (没有被限幅)
         // 2. 或者，虽然达到了最大值，但误差是负的 (说明功率超标了，需要通过积分减小电流)
@@ -396,9 +386,7 @@ static void MP4201_RunControlAlgorithm(MP4201_Handle_t* dev) {
         if (dev->pi.integral_sum > dev->maxIout) { dev->pi.integral_sum = dev->maxIout; }
         if (dev->pi.integral_sum < 0.0f) { dev->pi.integral_sum = 0.0f; }
 
-        // --------------------------------------------------------
-        // Step 3: 前馈控制 (Feed-Forward) 与 模式切换判断
-        // --------------------------------------------------------
+        // 前馈控制 (Feed-Forward) 与 模式切换判断
         // 基本前馈公式: I = P / V (功率守恒)
         float i_feed_forward = dev->targetVal / dev->vout_meas;
 
@@ -420,7 +408,7 @@ static void MP4201_RunControlAlgorithm(MP4201_Handle_t* dev) {
             dev->isCVphase = false;
         }
 
-        // 调试变量更新 (假设外部有定义 feed_forward_debug)
+        // 调试变量更新
         // update C++ wrapper debug value if available
         #ifdef __cplusplus
         MP4201::feedForwardDebug = i_feed_forward;
@@ -428,9 +416,7 @@ static void MP4201_RunControlAlgorithm(MP4201_Handle_t* dev) {
         (void)0;
         #endif
 
-        // --------------------------------------------------------
-        // Step 4: 计算最终输出电流 (PI + 前馈)
-        // --------------------------------------------------------
+        // 计算最终输出电流 (PI + 前馈)
         last_iout = next_iout; // 保存上一轮的值
 
         // PI 输出公式: I_out = (Kp * Error) + Integral + FeedForward
@@ -445,9 +431,7 @@ static void MP4201_RunControlAlgorithm(MP4201_Handle_t* dev) {
             next_iout = last_iout;
         }
 
-        // --------------------------------------------------------
-        // Step 5: 最终安全限幅
-        // --------------------------------------------------------
+        // 最终安全限幅
         if (next_iout >= dev->maxIout) {
             next_iout = dev->maxIout;
             dev->isMaxIout = true; // 标记达到最大电流
@@ -458,9 +442,7 @@ static void MP4201_RunControlAlgorithm(MP4201_Handle_t* dev) {
         // 最小电流限制 (防止设为0导致关机或异常)
         if (next_iout < 0.1f) { next_iout = 0.1f; } // 建议加一个非零下限
 
-        // --------------------------------------------------------
-        // Step 6: 准备寄存器数据
-        // --------------------------------------------------------
+        // 准备寄存器数据
         dev->calculated_iout_cmd = next_iout; // 记录用于调试
 
         // 写入 REG_IOUT_OC_FAULT_LIMIT (电流限制寄存器)
@@ -469,9 +451,7 @@ static void MP4201_RunControlAlgorithm(MP4201_Handle_t* dev) {
         reg_val = (uint16_t)(next_iout * SCALE_ILIM_SET_LSB_INV);
         need_write = 1;
 
-        // ============================================================
         // 模式 B: 恒压控制 (CV Mode)
-        // ============================================================
     } else if (dev->controlMode == MP4201_MODE_CV) {
         float next_vout = dev->targetVal;
 
@@ -487,9 +467,7 @@ static void MP4201_RunControlAlgorithm(MP4201_Handle_t* dev) {
         need_write = 1;
     }
 
-    // ============================================================
     // 执行 I2C DMA 写入
-    // ============================================================
     if (need_write) {
         dev->state = MP4201_STATE_WRITE_CTRL;
 
@@ -521,22 +499,15 @@ static HAL_StatusTypeDef MP4201_WriteReg_Blocking(MP4201_Handle_t* dev, uint8_t 
 
 void MP4201_SetDirection(MP4201_Handle_t* dev, uint8_t direction) {
     bool was_enabled = dev->isEnabled;
-    uint8_t data_buf = 0;
 
-    // ==========================================
-    // 第一步：软件停机 (Soft Stop)
-    // ==========================================
+    // 软件停机 (Soft Stop)
     MP4201_Enable(dev, 0);
 
-    // ==========================================
-    // 第二步：安全延时 (Safety Delay)
-    // ==========================================
+    // 安全延时 (Safety Delay)
     // 手册建议等待 300ms 以上让输出电容放电，防止反向电流冲击
-    HAL_Delay(500);
+    HAL_Delay(300);
 
-    // ==========================================
-    // 第三步：修改方向 (Change Direction)
-    // ==========================================
+    // 修改方向 (Change Direction)
     // 1. 先读取 MFR_CTRL1 (0xD0) 的当前值，避免覆盖其他配置（如 UVLO, 死区时间等）
     uint8_t ctrl1_val = 0;
     if (HAL_I2C_Mem_Read(dev->hi2c, dev->devAddr, REG_MFR_CTRL1, I2C_MEMADD_SIZE_8BIT, &ctrl1_val, 1, 100) ==
@@ -552,9 +523,7 @@ void MP4201_SetDirection(MP4201_Handle_t* dev, uint8_t direction) {
         HAL_I2C_Mem_Write(dev->hi2c, dev->devAddr, REG_MFR_CTRL1, I2C_MEMADD_SIZE_8BIT, &ctrl1_val, 1, 100);
     }
 
-    // ==========================================
-    // 第四步：软件启动 (Soft Start)
-    // ==========================================
+    // 软件启动 (Soft Start)
     MP4201_Enable(dev, was_enabled);
 }
 
