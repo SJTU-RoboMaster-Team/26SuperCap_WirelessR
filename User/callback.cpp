@@ -75,16 +75,13 @@ uint8_t refresh_counter;
 MP4201_Handle_t mp4201_dev; // 全局 MP4201 设备句柄
 FreqMeter modulator_loop(1);
 Modulator load_modulator(modulator_loop);
-extern TIM_HandleTypeDef htim3;
-extern TIM_HandleTypeDef htim5;
-extern HRTIM_HandleTypeDef hhrtim1;
 
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef* htim) {
     if (htim->Instance == TIMER_CAN_CTRL_LOOP) {
         // 100 Hz
         CAN_control_loop();
         can_loop.update();
-    } else if (htim->Instance == TIMER_BUZZ_CTRL_LOOP) {
+    } else if (htim->Instance == TIMER_BUZZ_LED_CTRL_LOOP) {
         // 100 Hz
         music_player.handle();
         led.handle();

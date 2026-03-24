@@ -22,6 +22,7 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "../../User/WirelessR/Inc/MP4201.h"
+#include "../../User/config.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -76,6 +77,15 @@ DMA_HandleTypeDef hdma_usart3_rx;
 
 /* USER CODE BEGIN PV */
 extern MP4201_Handle_t mp4201_dev; // 全局 MP4201 设备句柄
+extern uint8_t uart3_rx_buf[256];
+extern uint8_t uart1_rx_buf[256];
+extern uint8_t pwm_buffer[PWM_BUFFER_SIZE];
+
+extern uint16_t adc1_buf[16];
+extern uint16_t adc2_buf[16];
+extern uint16_t adc3_buf[16];
+extern uint16_t adc4_buf[16];
+extern uint16_t adc5_buf[16];
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -107,7 +117,7 @@ static void MX_USART3_UART_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-
+extern void CAN_filter_config(FDCAN_HandleTypeDef* hfdcan);
 /* USER CODE END 0 */
 
 /**
@@ -158,7 +168,9 @@ int main(void) {
     MX_TIM17_Init();
     MX_USART3_UART_Init();
     /* USER CODE BEGIN 2 */
-    /* MP4201 配置 */
+    /*-------------------------------------------------*/
+    /*                  WirelessR 配置                  */
+    /*-------------------------------------------------*/
     // 初始化 MP4201 设备，检查连接
     MP4201_Init(&mp4201_dev, mp4201_dev.hi2c);
     // 配置安全参数：最大输出电压 20V，最大输出电流 10A
@@ -170,6 +182,61 @@ int main(void) {
     MP4201_SetCP_Target(&mp4201_dev, 120, 0, 1e-3);
     // 启用输出
     MP4201_Enable(&mp4201_dev, 1);
+
+    /*-------------------------------------------------*/
+    /*                   SuperCap 配置                   */
+    /*-------------------------------------------------*/
+
+    HAL_Delay(200);
+    HAL_IWDG_Refresh(&hiwdg);
+
+    HAL_Delay(100);
+    HAL_IWDG_Refresh(&hiwdg);
+
+    HAL_OPAMP_SelfCalibrate(&hopamp1);
+    HAL_OPAMP_Start(&hopamp1);
+    HAL_OPAMP_SelfCalibrate(&hopamp2);
+    HAL_OPAMP_Start(&hopamp2);
+
+    HAL_UARTEx_ReceiveToIdle_DMA(&USART_HANDLER,uart3_rx_buf,sizeof (uart3_rx_buf));
+
+    CAN_filter_config(&FDCAN_HANDLER);
+    HAL_FDCAN_Start(&FDCAN_HANDLER);
+
+    HAL_ADCEx_Calibration_Start(&hadc1,ADC_SINGLE_ENDED);
+    HAL_ADCEx_Calibration_Start(&hadc2,ADC_SINGLE_ENDED);
+    HAL_ADCEx_Calibration_Start(&hadc3,ADC_SINGLE_ENDED);
+    HAL_ADCEx_Calibration_Start(&hadc4,ADC_SINGLE_ENDED);
+    HAL_ADCEx_Calibration_Start(&hadc5,ADC_SINGLE_ENDED);
+    HAL_IWDG_Refresh(&hiwdg);
+
+    HAL_Delay(50);
+
+    // HAL_ADC_Start_IT(&hadc1);
+    // HAL_ADC_Start_IT(&hadc2);
+    // HAL_ADC_Start_IT(&hadc3);
+    // HAL_ADC_Start_IT(&hadc4);
+    // HAL_ADC_Start_IT(&hadc5);
+    HAL_ADC_Start_DMA(&hadc1, adc1_buf, 8);
+    HAL_ADC_Start_DMA(&hadc2, adc2_buf, 8);
+    HAL_ADC_Start_DMA(&hadc3, adc3_buf, 8);
+    HAL_ADC_Start_DMA(&hadc4, adc4_buf, 8);
+    HAL_ADC_Start_DMA(&hadc5, adc5_buf, 8);
+    HAL_IWDG_Refresh(&hiwdg);
+
+
+    HAL_HRTIM_WaveformCountStart(&hhrtim1,HRTIM_TIMERID_MASTER | HRTIM_TIMERID_TIMER_B| HRTIM_TIMERID_TIMER_C);
+    HAL_Delay(50);
+
+    HAL_HRTIM_SimpleBaseStart_IT(&hhrtim1,HRTIM_TIMERINDEX_MASTER);
+    HAL_TIM_Base_Start_IT(&TIMER_BUZZ_PWM_HANDLER);
+    HAL_TIM_PWM_Start_IT(&TIMER_BUZZ_PWM_HANDLER, TIMER_CHANNEL_BUZZ_PWM);
+    HAL_IWDG_Refresh(&hiwdg);
+
+    HAL_TIM_Base_Start_IT(&htim6);
+    HAL_TIM_Base_Start_IT(&htim16);
+    HAL_TIM_Base_Start_IT(&htim17);
+
     /* USER CODE END 2 */
 
     /* Infinite loop */
