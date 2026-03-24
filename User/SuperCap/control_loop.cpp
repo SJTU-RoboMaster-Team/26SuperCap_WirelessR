@@ -19,6 +19,7 @@
 #include <cstdio>
 #include "../callback.h"
 #include "adc_sample.h"
+#include "../config.h"
 
 static uint32_t tick_40us;
 
@@ -55,7 +56,7 @@ Calibrator cali_estimator;
 
 LCDComm lcd_comm(&huart3);
 
-WS2812 ws2812(&htim8,TIM_CHANNEL_1, 1);
+WS2812 ws2812(&TIMER_HANDLER_WS2812_SEND,TIM_CHANNEL_1, 1);
 
 LED led = LED(&ws2812);
 

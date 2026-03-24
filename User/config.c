@@ -7,7 +7,6 @@
 
 // User Public Variables
 uint8_t uart3_rx_buf[256];
-uint8_t uart1_rx_buf[256];
 uint8_t pwm_buffer[PWM_BUFFER_SIZE];
 
 uint16_t adc1_buf[16];

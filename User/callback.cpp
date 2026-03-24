@@ -27,7 +27,6 @@ extern TIM_HandleTypeDef htim2;
 extern TIM_HandleTypeDef htim8;
 extern IWDG_HandleTypeDef hiwdg;
 
-extern uint8_t uart1_rx_buf[256];
 extern uint8_t uart3_rx_buf[256];
 
 uint8_t header;
@@ -96,14 +95,14 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef* htim) {
     } else if (htim->Instance == TIMER_4201_CTRL_LOOP) {
         // 2kHz
         MP4201_StartDMAUpdate(&mp4201_dev);
-    }else if (htim->Instance == TIMER_4201_ASK_LOOP) {
+    } else if (htim->Instance == TIMER_4201_ASK_LOOP) {
         //4kHz
         load_modulator.handle();
     }
 }
 
 void HAL_HRTIM_RepetitionEventCallback(HRTIM_HandleTypeDef* hhrtim, uint32_t TimerIdx) {
-    // 25000Hz
+    // 25kHz
     if (hhrtim->Instance == HRTIM1) {
         if (TimerIdx == HRTIM_TIMERINDEX_MASTER) {
             main_control_loop();
@@ -168,36 +167,27 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc) {
 //}
 
 void HAL_TIM_PWM_PulseFinishedCallback(TIM_HandleTypeDef* htim) {
-    if (htim == &htim8) {
+    if (htim->Instance == TIMER_WS2812_SEND) {
         ws2812.pwm_send_callback();
     }
 }
 
 
 void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef* huart, uint16_t Size) {
-    if (huart->Instance == USART3) {
+    if (huart->Instance == USART_REFEREE) {
         static uint8_t buffer[256];
         for (int i = 0; i < Size; ++i) {
             buffer[i] = uart3_rx_buf[i];
-            //            uart5_rx_buf[i] = 0;
         }
 
         referee.rxCallback(buffer, Size);
 
         HAL_UARTEx_ReceiveToIdle_DMA(huart, uart3_rx_buf, sizeof(uart3_rx_buf));
-    } else if (huart->Instance == USART1) {
-        static uint8_t buffer[256];
-        for (int i = 0; i < Size; ++i) {
-            buffer[i] = uart1_rx_buf[i];
-        }
-        lcd_comm.rxCallback(buffer, Size);
-
-        HAL_UARTEx_ReceiveToIdle_DMA(huart, uart1_rx_buf, sizeof(uart1_rx_buf));
     }
 }
 
 void HAL_UART_ErrorCallback(UART_HandleTypeDef* huart) {
-    if (huart->Instance == USART3) {
+    if (huart->Instance == USART_REFEREE) {
         // Handle UART5 error
 
         // Reset the peripheral and the DMA
@@ -209,18 +199,6 @@ void HAL_UART_ErrorCallback(UART_HandleTypeDef* huart) {
         // Reinitialize the peripheral and the DMA
         HAL_UART_Init(huart);
         HAL_UARTEx_ReceiveToIdle_DMA(huart, uart3_rx_buf, sizeof(uart3_rx_buf)); // If you're using DMA
-    } else if (huart->Instance == USART1) {
-        // Handle LPUART1 error
-
-        // Reset the peripheral and the DMA
-        HAL_UART_DeInit(huart);
-        HAL_DMA_DeInit(huart->hdmarx); // If you're using DMA
-
-        // Reconfigure GPIOs if necessary
-
-        // Reinitialize the peripheral and the DMA
-        HAL_UART_Init(huart);
-        HAL_UARTEx_ReceiveToIdle_DMA(huart, uart1_rx_buf, sizeof(uart1_rx_buf)); // If you're using DMA
     }
 }
 
