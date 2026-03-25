@@ -24,6 +24,9 @@ set(CMAKE_PROJECT_NAME 26_SuperCap_WirelessR_V2)
 # Enable compile command to ease indexing with e.g. clangd
 set(CMAKE_EXPORT_COMPILE_COMMANDS TRUE)
 
+# 开启链接时优化 优化flash占用
+set(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)
+
 # Core project settings
 project(${CMAKE_PROJECT_NAME})
 message("Build type: " ${CMAKE_BUILD_TYPE})
@@ -31,10 +34,10 @@ message("Build type: " ${CMAKE_BUILD_TYPE})
 # Enable CMake support for ASM and C languages
 enable_language(C ASM)
 
+# Create an executable object type
 file(GLOB_RECURSE SUPERCAP_SOURCES "User/SuperCap/*.c" "User/SuperCap/*.cpp")
 file(GLOB_RECURSE WIRELESSR_SOURCES "User/WirelessR/*.c" "User/WirelessR/*.cpp")
 file(GLOB GLOB_SOURCES "User/*.c" "User/*.cpp")
-# Create an executable object type
 add_executable(${CMAKE_PROJECT_NAME}
         ${SUPERCAP_SOURCES}
         ${WIRELESSR_SOURCES}

@@ -5,7 +5,7 @@
 #define INC_26_SUPERCAP_WIRELESSR_V2_CONFIG_H
 
 #include "stm32g4xx_hal.h"
-
+// Peripherals
 #define PWM_BUFFER_SIZE                     250
 
 #define TIMER_CAN_CTRL_LOOP                 TIM6
@@ -28,4 +28,13 @@
 #define USART_REFEREE                       USART3
 #define USART_HANDLER_REFEREE               huart3
 
+// Parameters
+#define WR_MODE                             1 // 0:CV MODE 1:CP MODE
+#define WR_MAX_VOUT                         26.f
+#define WR_MAX_IOUT                         5.8f
+#define WR_CP_TARGET                        120
+#define WR_CP_PI_KP                         0.f
+#define WR_CP_PI_KI                         1e-3
+#define WR_CV_TARGET                        6.f
+#define WR_MIN_VIN                          15.f
 #endif //INC_26_SUPERCAP_WIRELESSR_V2_CONFIG_H

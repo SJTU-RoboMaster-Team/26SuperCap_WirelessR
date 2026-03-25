@@ -130,12 +130,15 @@ int main(void)
     // 初始化 MP4201 设备，检查连接
     MP4201_Init(&mp4201_dev, mp4201_dev.hi2c);
     // 配置安全参数：最大输出电压 20V，最大输出电流 10A
-    MP4201_ConfigureMaximum(&mp4201_dev, 26.0f, 5.8f);
+    MP4201_ConfigureMaximum(&mp4201_dev, WR_MAX_VOUT, WR_MAX_IOUT);
     // 设置无线充输入保护，最低输入电压 5V
-    MP4201_ConfigWirelessInput(&mp4201_dev, 5.0f);
-    // 或者设定为恒压模式，目标电压 20V
-    // MP4201_SetCV_Target(&mp4201_dev, 20.0f); // 恒压模式，20V
-    MP4201_SetCP_Target(&mp4201_dev, 120, 0, 1e-3);
+    MP4201_ConfigWirelessInput(&mp4201_dev, WR_MIN_VIN);
+    // 模式设置 (config.h)
+    #if WR_MODE == 1
+    MP4201_SetCP_Target(&mp4201_dev, WR_CP_TARGET, WR_CP_PI_KP, WR_CP_PI_KI);
+    #elif WR_MODE == 0
+    MP4201_SetCV_Target(&mp4201_dev, WR_CV_TARGET);
+    #endif
     // 启用输出
     MP4201_Enable(&mp4201_dev, 1);
 
@@ -186,7 +189,8 @@ int main(void)
     HAL_Delay(50);
 
     HAL_HRTIM_SimpleBaseStart_IT(&hhrtim1,HRTIM_TIMERINDEX_MASTER);
-    // HAL_TIM_Base_Start_IT(&TIMER_HANDLER_BUZZ_PWM); // 疑似没用
+    // HAL_TIM_Base_Start_IT(&TIMER_HANDLER_BUZZ_PWM); // 中断疑似没用
+    HAL_TIM_Base_Start(&TIMER_HANDLER_BUZZ_PWM);
     HAL_TIM_PWM_Start_IT(&TIMER_HANDLER_BUZZ_PWM, TIMER_CHANNEL_BUZZ_PWM);
     HAL_IWDG_Refresh(&hiwdg); // TODO:移植看门狗
 
@@ -205,9 +209,14 @@ int main(void)
             if (MP4201_Init_Retry(&mp4201_dev, mp4201_dev.hi2c, 5, 200)
                 == HAL_OK) {
                 MP4201_ConfigBasic(&mp4201_dev);
-                MP4201_ConfigureMaximum(&mp4201_dev, 26.0f, 5.8f);
-                MP4201_ConfigWirelessInput(&mp4201_dev, 5.0f);
-                MP4201_SetCP_Target(&mp4201_dev, 120, 0, 1e-3);
+                MP4201_ConfigureMaximum(&mp4201_dev, WR_MAX_VOUT, WR_MAX_IOUT);
+                MP4201_ConfigWirelessInput(&mp4201_dev, WR_MIN_VIN);
+                #if WR_MODE == 1
+                MP4201_SetCP_Target(&mp4201_dev, WR_CP_TARGET, WR_CP_PI_KP, WR_CP_PI_KI);
+                #elif WR_MODE == 0
+                MP4201_SetCV_Target(&mp4201_dev, WR_CV_TARGET);
+                #endif
+
                 MP4201_Enable(&mp4201_dev, 1);
             }
         }
