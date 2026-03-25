@@ -130,7 +130,7 @@ void main_control_loop() {
         music_player.start_warning(H5);
         pm.err_code |= 1;
         refresh_flag.loop_flag_ = true;
-        // return;
+        return; // TODO:重构蜂鸣器，WS2812报警逻辑
     } else {
         pm.err_code &= ~1;
     }

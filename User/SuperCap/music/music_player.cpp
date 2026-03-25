@@ -3,6 +3,7 @@
 //
 
 #include "music_player.h"
+#include "stm32g4xx_hal.h"
 
 void MusicPlayer::play_one_note(MusicNote note) {
     // calc the frequency

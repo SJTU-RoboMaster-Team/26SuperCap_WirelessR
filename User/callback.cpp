@@ -25,7 +25,7 @@ extern ADC_HandleTypeDef hadc4;
 extern ADC_HandleTypeDef hadc5;
 extern TIM_HandleTypeDef htim2;
 extern TIM_HandleTypeDef htim8;
-extern IWDG_HandleTypeDef hiwdg;
+// extern IWDG_HandleTypeDef hiwdg;
 
 extern uint8_t uart3_rx_buf[256];
 
@@ -80,7 +80,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef* htim) {
         // 100 Hz
         CAN_control_loop();
         can_loop.update();
-    } else if (htim->Instance == TIMER_BUZZ_LED_CTRL_LOOP) {
+    } else if (htim->Instance == TIMER_BUZZ_WS2812_CTRL_LOOP) {
         // 100 Hz
         music_player.handle();
         led.handle();
@@ -89,7 +89,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef* htim) {
         // 250ms iwdg; 100ms refresh
         refresh_counter++;
         if (refresh_flag.isAllflagtrue() && refresh_counter >= 10) {
-            HAL_IWDG_Refresh(&hiwdg);
+            // HAL_IWDG_Refresh(&hiwdg);
             refresh_flag.reset();
         }
     } else if (htim->Instance == TIMER_4201_CTRL_LOOP) {

@@ -4,7 +4,6 @@
 //
 
 #include "../Inc/modulator.h"
-#include <cstring>
 
 // 引入外部 MP4201 设备句柄获取数据
 extern MP4201_Handle_t mp4201_dev;

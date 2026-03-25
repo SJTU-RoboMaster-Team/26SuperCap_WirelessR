@@ -23,7 +23,6 @@
 #include "fdcan.h"
 #include "hrtim.h"
 #include "i2c.h"
-#include "iwdg.h"
 #include "opamp.h"
 #include "tim.h"
 #include "usart.h"
@@ -113,7 +112,6 @@ int main(void)
   MX_FDCAN3_Init();
   MX_HRTIM1_Init();
   MX_I2C1_Init();
-  MX_IWDG_Init();
   MX_OPAMP1_Init();
   MX_OPAMP2_Init();
   MX_TIM2_Init();
@@ -149,10 +147,10 @@ int main(void)
     /*                   SuperCap 配置                  */
     /*-------------------------------------------------*/
     HAL_Delay(200);
-    HAL_IWDG_Refresh(&hiwdg);
+    // HAL_IWDG_Refresh(&hiwdg);
 
     HAL_Delay(100);
-    HAL_IWDG_Refresh(&hiwdg);
+    // HAL_IWDG_Refresh(&hiwdg);
 
     HAL_OPAMP_SelfCalibrate(&hopamp1);
     HAL_OPAMP_Start(&hopamp1);
@@ -169,7 +167,7 @@ int main(void)
     HAL_ADCEx_Calibration_Start(&hadc3,ADC_SINGLE_ENDED);
     HAL_ADCEx_Calibration_Start(&hadc4,ADC_SINGLE_ENDED);
     HAL_ADCEx_Calibration_Start(&hadc5,ADC_SINGLE_ENDED);
-    HAL_IWDG_Refresh(&hiwdg);
+    // HAL_IWDG_Refresh(&hiwdg);
 
     HAL_Delay(50);
 
@@ -178,12 +176,12 @@ int main(void)
     // HAL_ADC_Start_IT(&hadc3);
     // HAL_ADC_Start_IT(&hadc4);
     // HAL_ADC_Start_IT(&hadc5);
-    HAL_ADC_Start_DMA(&hadc1, adc1_buf, 8);
-    HAL_ADC_Start_DMA(&hadc2, adc2_buf, 8);
-    HAL_ADC_Start_DMA(&hadc3, adc3_buf, 8);
-    HAL_ADC_Start_DMA(&hadc4, adc4_buf, 8);
-    HAL_ADC_Start_DMA(&hadc5, adc5_buf, 8);
-    HAL_IWDG_Refresh(&hiwdg);
+    HAL_ADC_Start_DMA(&hadc1, (uint32_t *)adc1_buf, 8);
+    HAL_ADC_Start_DMA(&hadc2, (uint32_t *)adc2_buf, 8);
+    HAL_ADC_Start_DMA(&hadc3, (uint32_t *)adc3_buf, 8);
+    HAL_ADC_Start_DMA(&hadc4, (uint32_t *)adc4_buf, 8);
+    HAL_ADC_Start_DMA(&hadc5, (uint32_t *)adc5_buf, 8);
+    // HAL_IWDG_Refresh(&hiwdg);
 
     HAL_HRTIM_WaveformCountStart(&hhrtim1,HRTIM_TIMERID_MASTER | HRTIM_TIMERID_TIMER_B | HRTIM_TIMERID_TIMER_C);
     HAL_Delay(50);
@@ -192,10 +190,10 @@ int main(void)
     // HAL_TIM_Base_Start_IT(&TIMER_HANDLER_BUZZ_PWM); // 中断疑似没用
     HAL_TIM_Base_Start(&TIMER_HANDLER_BUZZ_PWM);
     HAL_TIM_PWM_Start_IT(&TIMER_HANDLER_BUZZ_PWM, TIMER_CHANNEL_BUZZ_PWM);
-    HAL_IWDG_Refresh(&hiwdg); // TODO:移植看门狗
+    // HAL_IWDG_Refresh(&hiwdg); // TODO:移植看门狗
 
     HAL_TIM_Base_Start_IT(&TIMER_HANDLER_CAN_CTRL_LOOP);
-    HAL_TIM_Base_Start_IT(&TIMER_HANDLER_BUZZ_LED_CTRL_LOOP);
+    HAL_TIM_Base_Start_IT(&TIMER_HANDLER_BUZZ_WS2812_CTRL_LOOP);
 
   /* USER CODE END 2 */
 
@@ -240,9 +238,8 @@ void SystemClock_Config(void)
   /** Initializes the RCC Oscillators according to the specified parameters
   * in the RCC_OscInitTypeDef structure.
   */
-  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_LSI|RCC_OSCILLATORTYPE_HSE;
+  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSE;
   RCC_OscInitStruct.HSEState = RCC_HSE_ON;
-  RCC_OscInitStruct.LSIState = RCC_LSI_ON;
   RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
   RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
   RCC_OscInitStruct.PLL.PLLM = RCC_PLLM_DIV4;

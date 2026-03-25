@@ -10,8 +10,8 @@
 
 #define TIMER_CAN_CTRL_LOOP                 TIM6
 #define TIMER_HANDLER_CAN_CTRL_LOOP         htim6
-#define TIMER_BUZZ_LED_CTRL_LOOP            TIM17
-#define TIMER_HANDLER_BUZZ_LED_CTRL_LOOP    htim17
+#define TIMER_BUZZ_WS2812_CTRL_LOOP         TIM17
+#define TIMER_HANDLER_BUZZ_WS2812_CTRL_LOOP htim17
 #define TIMER_BUZZ_PWM                      TIM2
 #define TIMER_CHANNEL_BUZZ_PWM              TIM_CHANNEL_1
 #define TIMER_HANDLER_BUZZ_PWM              htim2
