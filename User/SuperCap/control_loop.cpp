@@ -112,38 +112,49 @@ void main_control_loop() {
     // bbm.handle();
     //
     // return;
-    if (pm.mode != PowerManager::CALIBRATE) {
-        if (referee.robot_status_.current_HP <= 0 || referee.robot_status_.power_management_chassis_output == false) {
-            bbm.safe_disable();
-            bbm.stop();
-            pm.stop();
+    bool in_calibrate_mode = (pm.mode == PowerManager::CALIBRATE);
+    bool referee_connected = referee.connected();
+    bool referee_disconnect_alarm = !in_calibrate_mode && !referee_connected && tick_40us > 75000;
+    bool cap_over_voltage_alarm = (bbm.v_c > 29.0f);
+
+    if (!in_calibrate_mode) {
+        if (referee_connected) {
+            if (referee.robot_status_.current_HP <= 0 || referee.robot_status_.power_management_chassis_output == false) {
+                bbm.safe_disable();
+                bbm.stop();
+                pm.stop();
+            } else {
+                bbm.unlock();
+            }
         } else {
+            // Keep output strategy alive on referee disconnect.
             bbm.unlock();
         }
     }
 
-    //    music_player.start_warning(L3);
-
-    // 裁判系统断联
-    if (tick_40us > 75000 && !referee.connected() && pm.mode != PowerManager::CALIBRATE) { // 断联3s响
-        // bbm.stop(); // 增强裁判系统断联时的鲁棒性
-        music_player.start_warning(H5);
+    if (referee_disconnect_alarm) {
         pm.err_code |= 1;
         refresh_flag.loop_flag_ = true;
-        return; // TODO:重构蜂鸣器，WS2812报警逻辑
     } else {
         pm.err_code &= ~1;
     }
 
-    if (bbm.v_c > 29) {
+    if (cap_over_voltage_alarm) {
         // out v too high
-        music_player.start_warning(L3);
         led.set_rgb(100, 0, 0);
         pm.err_code |= 2;
         bbm.stop();
     } else {
-        music_player.stop_warning();
         pm.err_code &= ~2;
+    }
+
+    // Warning priority: over-voltage > referee disconnect.
+    if (cap_over_voltage_alarm) {
+        music_player.start_warning(L3);
+    } else if (referee_disconnect_alarm) {
+        music_player.start_warning(H5);
+    } else {
+        music_player.stop_warning();
     }
 
     // for debug purpose
@@ -162,7 +173,7 @@ void main_control_loop() {
     bbm.handle();
 
     // led 刷新频率不用很快
-    if (loop_cnt % 1000 == 0) {
+    if (loop_cnt % 5000 == 0) {
         switch (pm.state) {
             case PowerManager::CHARGING:
                 led.set_rgb(0, 255, 0);
