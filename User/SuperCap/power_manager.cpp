@@ -96,21 +96,24 @@ void PowerManager::handle() {
 }
 
 void PowerManager::check_cap_status() {
-    // 更新施密特触发器状态
     cap_full_smtrg.update(bbm.filtered_v_c.val);
-    cap_limit_30power_smtrg.update(bbm.filtered_v_c.val);
     cap_limit_60power_smtrg.update(bbm.filtered_v_c.val);
+    cap_limit_30power_smtrg.update(bbm.filtered_v_c.val);
     cap_low_smtrg.update(bbm.filtered_v_c.val);
 
-    // 根据电容电压限制最大放电功率
+    // 将施密特触发器状态同步到标志位
+    full_charge = cap_full_smtrg.state;   // 电压 ≥ 26V 后置位，≤ 25.5V 复位
+    empty       = cap_low_smtrg.state;    // 电压 ≤ 10V 后置位，≥ 11.5V 复位
+
+    // 根据电容电压分级限制最大放电功率
     if (!cap_limit_30power_smtrg.state) {
-        max_releasing_pwr = -30.0f; // 电压很低，限制小功率放电
+        max_releasing_pwr = -30.0f;        // 电压极低 (<12V)：严格限制放电
     } else if (!cap_limit_60power_smtrg.state) {
-        max_releasing_pwr = -60.0f;    // 电压较低，限制中等功率
-        msg.under_voltage_flag = 0x01; //标记欠压
+        max_releasing_pwr = -60.0f;        // 电压偏低 (<15V)：中等限制
+        msg.under_voltage_flag = 0x01;
         under_voltage_tick = 0;
     } else {
-        max_releasing_pwr = charge_parameter.allowed_max_releasing_pwr; // 正常，不限流
+        max_releasing_pwr = charge_parameter.allowed_max_releasing_pwr;  // 电压正常：不限制
     }
 }
 
