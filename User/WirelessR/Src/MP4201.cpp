@@ -7,7 +7,9 @@
   */
 
 #include "../Inc/MP4201.h"
+#include "../../config.h"
 #include "stm32g4xx_hal.h"
+
 // define static debug member for C++ wrapper
 #ifdef __cplusplus
 float MP4201::feedForwardDebug = 0.0f;
@@ -39,8 +41,8 @@ HAL_StatusTypeDef MP4201_Init(MP4201_Handle_t* dev, I2C_HandleTypeDef* hi2c) {
     dev->pi.integral_sum = 0.0f;
 
     // 1. 硬件激活 (优化：避免重试时反复产生 50ms 延时)
-    if (HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_2) == GPIO_PIN_RESET) {
-        HAL_GPIO_WritePin(GPIOC, GPIO_PIN_2, GPIO_PIN_SET);
+    if (HAL_GPIO_ReadPin(GPIO_PORT_EN_4201, GPIO_PIN_EN_4201) == GPIO_PIN_RESET) {
+        HAL_GPIO_WritePin(GPIO_PORT_EN_4201, GPIO_PIN_EN_4201, GPIO_PIN_SET);
         HAL_Delay(50); // 仅首次冷启动时需要等待
     }
 
@@ -507,7 +509,7 @@ void MP4201_SetDirection(MP4201_Handle_t* dev, uint8_t direction) {
     // 手册建议等待 300ms 以上让输出电容放电，防止反向电流冲击
     HAL_Delay(300);
 
-    // 修改方向 (Change Direction)
+    // 修改方向 (Change Direction) 和 dead time
     // 1. 先读取 MFR_CTRL1 (0xD0) 的当前值，避免覆盖其他配置（如 UVLO, 死区时间等）
     uint8_t ctrl1_val = 0;
     if (HAL_I2C_Mem_Read(dev->hi2c, dev->devAddr, REG_MFR_CTRL1, I2C_MEMADD_SIZE_8BIT, &ctrl1_val, 1, 100) ==
@@ -518,7 +520,9 @@ void MP4201_SetDirection(MP4201_Handle_t* dev, uint8_t direction) {
         } else {
             ctrl1_val &= ~(1 << 7); // 清 0：OUT -> VIN
         }
-
+        // dead time = 30ns
+        ctrl1_val |= (1 << 1);
+        ctrl1_val |= (1 << 0);
         // 3. 写回寄存器
         HAL_I2C_Mem_Write(dev->hi2c, dev->devAddr, REG_MFR_CTRL1, I2C_MEMADD_SIZE_8BIT, &ctrl1_val, 1, 100);
     }

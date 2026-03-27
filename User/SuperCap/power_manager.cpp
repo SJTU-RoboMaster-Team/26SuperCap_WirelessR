@@ -96,144 +96,156 @@ void PowerManager::handle() {
 }
 
 void PowerManager::check_cap_status() {
-    // 更新施密特触发器状态
+    // 更新全部电压迟滞比较器
     cap_full_smtrg.update(bbm.filtered_v_c.val);
-    cap_limit_30power_smtrg.update(bbm.filtered_v_c.val);
     cap_limit_60power_smtrg.update(bbm.filtered_v_c.val);
+    cap_limit_30power_smtrg.update(bbm.filtered_v_c.val);
     cap_low_smtrg.update(bbm.filtered_v_c.val);
 
-    // 根据电容电压限制最大放电功率
+    // 将施密特触发器状态同步到标志位
+    full_charge = cap_full_smtrg.state;   // 电压 ≥ 26V 后置位，≤ 25.5V 复位
+    empty       = cap_low_smtrg.state;    // 电压 ≤ 10V 后置位，≥ 11.5V 复位
+
+    // 根据电容电压分级限制最大放电功率
     if (!cap_limit_30power_smtrg.state) {
-        max_releasing_pwr = -30.0f; // 电压很低，限制小功率放电
+        max_releasing_pwr = -30.0f;        // 电压极低 (<12V)：严格限制放电
     } else if (!cap_limit_60power_smtrg.state) {
-        max_releasing_pwr = -60.0f;    // 电压较低，限制中等功率
-        msg.under_voltage_flag = 0x01; //标记欠压
+        max_releasing_pwr = -60.0f;        // 电压偏低 (<15V)：中等限制
+        msg.under_voltage_flag = 0x01;
         under_voltage_tick = 0;
     } else {
-        max_releasing_pwr = charge_parameter.allowed_max_releasing_pwr; // 正常，不限流
+        max_releasing_pwr = charge_parameter.allowed_max_releasing_pwr;  // 电压正常：不限制
     }
 }
 
 void PowerManager::buffer_mode() {
-    //
-    // 尽量保证底盘功率 < 裁判系统限制
-    // 利用多余功率给电容充电
-    // 功率不足时电容放电补充
-    // 保持 buffer 能量在安全水位
+    // Buffer Mode 目标：
+    //   底盘实际功率 ≤ 裁判系统功率上限
+    //   利用超级电容吸收/释放功率差额，维护 buffer 能量在安全水位
 
-    int32_t buffer_minus_target = power_parameter.buffer_energy - target_buffer;
+    // 阶段1：计算 buffer 能量补偿量 (compensation)
+    compute_buffer_compensation();
 
-    /* 策略1：计算Compensation */
-    // 大功率输出时，提升cap端输出权重，减少buffer充电补偿
-    if (buffer_minus_target >= 0 && filtered_out_pwr.val > 180) {
-        buffer_minus_target = (int16_t)((float)buffer_minus_target * 0.25);
-    }
-
-    // 0. + 抬高从chassis口出来的用电量; - 减少; +-指的是cap端的充放电
-    // 1. 如果缓冲能量低了，则稍微降低功率，把缓冲能量补回去
-    // 2. 如果底盘功率高了，则加大电容输出
-    // 3. 如果底盘功率低了，就充电
-    // 4. 如果底盘功率低，而且满电了，就不充电
-    // 5. 不论如何最终以裁判系统为准
-    if (bbm.is_working()) {
-        if (filtered_out_pwr.val > 250) {
-            referee_buffer_pid.kp = 6.5;
-        } else if (filtered_out_pwr.val > 150) {
-            referee_buffer_pid.kp = 3.5;
-        } else {
-            referee_buffer_pid.kp = 1.5;
-        }
-        buffer_far_from_target.update(buffer_minus_target); // 3, 7
-        referee_buffer_pid.update(0, (float)buffer_minus_target);
-
-        // 如果未满电 或者 Buffer 极低 (<60J)，允许补偿充电
-        if (!full_charge || power_parameter.buffer_energy < 60) {
-            // compensation < 0: 减少从 chassis 取电 (放电/少充)
-            // compensation > 0: 增加从 chassis 取电 (充电)
-            // PID 输出负表示 buffer 太多 -> 需要增加取电 -> compensation 正
-            if (buffer_far_from_target.state == true) {
-                compensation = -referee_buffer_pid.get_output(); // compensation是电容组充电补偿,+充电,-放电
-            } else {
-                compensation = -referee_buffer_pid.get_iout();
-            }
-        } else {
-            compensation = 0;
-        }
-    } else {
-        referee_buffer_pid.reset();
-        compensation = 0;
-    }
-
-    /* 策略2: 启停 */
-    bool over_power = filtered_out_pwr.val > power_limit;
-    bool buffer_low = power_parameter.buffer_energy < 60;
-    bool power_surplus = filtered_out_pwr.val < power_limit;
+    // 阶段2：启停决策
+    const bool over_power    = (filtered_out_pwr.val > power_limit);
+    const bool buffer_low    = (power_parameter.buffer_energy < 60);
+    const bool power_surplus = (filtered_out_pwr.val < power_limit);
 
     if ((over_power && !empty) || buffer_low) {
-        // 需要放电 或者 Buffer 危急 -> 启动
+        // 需要放电补充 或 buffer 危急 → 启动
         bbm.start();
     } else if (full_charge) {
-        // 满电且功率充足 -> 待机，转为恒压模式维持电压
-        compensation = 0;
+        // 满电且功率充足 → 转恒压浮充，退出功率控制
+        compensation   = 0.0f;
         cap_pwr_pid.reset();
-        target_cap_pwr = 0;
+        target_cap_pwr = 0.0f;
         bbm.set_voltage_loop(charge_parameter.full_charge_target_v);
         return;
     }
 
     if (power_surplus && !full_charge) {
-        // 有富余功率且没满电 -> 启动充电
+        // 有富余功率且未满电 → 启动充电
         bbm.start();
     } else if (empty) {
-        // 没电 -> 停机
+        // 电容接近耗尽 → 停机，零电流待机
         bbm.stop();
-        compensation = 0;
+        compensation = 0.0f;
         cap_pwr_pid.reset();
-        bbm.set_current_loop(bbm.v_c, 0); // 零电流待机
+        bbm.set_current_loop(bbm.v_c, 0.0f);
+        // 不 return：is_working() = false，功率控制阶段会自然跳过
     }
 
+    // 满电时禁止充电（允许放电补给底盘）
     if (full_charge) {
-        // 满电不允许继续充电
-        target_cap_pwr = my_math::limit_max(target_cap_pwr, 0);
+        target_cap_pwr = my_math::limit_max(target_cap_pwr, 0.0f);
     }
 
-    /* 计算最终目标功率 */
+    // 阶段3：目标功率计算（仅在 DC/DC 运行时执行）
     if (bbm.is_working()) {
-        // 目标电容功率 = 裁判限制 - 当前底盘实际消耗 + 补偿
-        float pwr_gap = power_limit - filtered_out_pwr.val + compensation;
-
-        // 平滑控制：如果反应滞后，融合历史值
-        if (follow_trend_estimator.trend == FollowTrendEstimator::LAGGING) {
-            float smoothed_input = pwr_gap * 0.3f + filtered_cap_pwr.val * 0.7f;
-            target_cap_pwr += chassis_pwr_pid.update(smoothed_input, target_cap_pwr);
-        } else {
-            target_cap_pwr += chassis_pwr_pid.update(pwr_gap, target_cap_pwr);
-        }
-        //        target_cap_pwr = power_limit + compensation - out_pwr;
-
-        // 限幅
-        if (bbm.start_up_info.starting) {
-            // 启动阶段充电限幅，放电不限幅，快速建立母线电压
-            target_cap_pwr = my_math::limit(target_cap_pwr, charge_parameter.allowed_max_releasing_pwr, 100);
-        } else {
-            target_cap_pwr = my_math::limit(target_cap_pwr, max_releasing_pwr, max_charging_pwr);
-        }
-
-        if (empty) {
-            target_cap_pwr = 10.0f;
-        }
-
-        // I = P/U PID
-        float target_i = bbm.target_current + cap_pwr_pid.update(target_cap_pwr, filtered_cap_pwr.val);
-        if (follow_trend_estimator.trend == FollowTrendEstimator::LAGGING && bbm.get_mode() == BuckBoostManager::BUCK &&
-            state == CHARGING) {
-            bbm.upgrade();
-            cap_pwr_pid.reset();
-            target_i = target_cap_pwr / bbm.filtered_v_c.val;
-        }
-        target_i = my_math::limit_abs(target_i, 25.0f);
-        bbm.set_current_loop(bbm.filtered_v_c.val, target_i);
+        compute_and_apply_target_power();
     }
+}
+
+void PowerManager::compute_buffer_compensation() {
+    if (!bbm.is_working()) {
+        referee_buffer_pid.reset();
+        compensation = 0.0f;
+        return;
+    }
+
+    // buffer_surplus > 0: buffer 有余量; < 0: buffer 不足
+    int32_t buffer_surplus = power_parameter.buffer_energy - target_buffer;
+
+    // 大功率输出时降低 buffer 补偿权重，优先保障电容放电响应
+    if (buffer_surplus > 0 && filtered_out_pwr.val > 180.0f) {
+        buffer_surplus = (int32_t)((float)buffer_surplus * 0.25f);
+    }
+
+    // 动态 PID 增益：底盘功率越大，响应越激进
+    if      (filtered_out_pwr.val > 250.0f) referee_buffer_pid.kp = 6.5f;
+    else if (filtered_out_pwr.val > 150.0f) referee_buffer_pid.kp = 3.5f;
+    else                                     referee_buffer_pid.kp = 1.5f;
+
+    // 施密特触发器判断偏差是否超出死区（阈值 3J/7J）
+    // int32_t → uint16_t：负值（buffer不足）溢出为大数，触发"远离目标"状态
+    buffer_far_from_target.update((uint16_t)buffer_surplus);
+    referee_buffer_pid.update(0.0f, (float)buffer_surplus);
+
+    // 仅在未满电或 buffer 危急时计算补偿
+    if (!full_charge || power_parameter.buffer_energy < 60) {
+        // PID ref=0, fdb=buffer_surplus，输出符号说明：
+        //   buffer_surplus < 0 (buffer不足) → PID输出 > 0 → compensation < 0 → 电容多放电
+        //   buffer_surplus > 0 (buffer过多) → PID输出 < 0 → compensation > 0 → 电容多充电
+        // 偏差大时用完整输出，接近目标时仅用积分项以减少抖动
+        compensation = buffer_far_from_target.state
+                     ? -referee_buffer_pid.get_output()
+                     : -referee_buffer_pid.get_iout();
+    } else {
+        compensation = 0.0f;
+    }
+}
+
+void PowerManager::compute_and_apply_target_power() {
+    // 期望功率差 = 功率上限 - 底盘实际功率 + buffer 补偿
+    //   pwr_gap > 0: 功率有余 → 充电
+    //   pwr_gap < 0: 功率不足 → 放电
+    float pwr_gap = power_limit - filtered_out_pwr.val + compensation;
+
+    // 滞后补偿：若电容功率跟随存在滞后，融合当前测量值以平滑控制
+    if (follow_trend_estimator.trend == FollowTrendEstimator::LAGGING) {
+        float smoothed = pwr_gap * 0.3f + filtered_cap_pwr.val * 0.7f;
+        target_cap_pwr += chassis_pwr_pid.update(smoothed, target_cap_pwr);
+    } else {
+        target_cap_pwr += chassis_pwr_pid.update(pwr_gap, target_cap_pwr);
+    }
+
+    // 目标功率限幅
+    if (bbm.start_up_info.starting) {
+        // 启动阶段：充电限幅，放电不限（快速建立母线电压）
+        target_cap_pwr = my_math::limit(target_cap_pwr,
+                                        charge_parameter.allowed_max_releasing_pwr, 100.0f);
+    } else {
+        target_cap_pwr = my_math::limit(target_cap_pwr, max_releasing_pwr, max_charging_pwr);
+    }
+
+    // 电容耗尽时请求微量充电，维持系统可用
+    if (empty) {
+        target_cap_pwr = 10.0f;
+    }
+
+    // 功率外环 → 电流内环：target_i = 当前设定 + PID(P_target, P_actual)
+    float target_i = bbm.target_current + cap_pwr_pid.update(target_cap_pwr, filtered_cap_pwr.val);
+
+    // 若控制严重滞后且处于 Buck 充电模式，升级至 BuckBoost 以提升响应带宽
+    if (follow_trend_estimator.trend == FollowTrendEstimator::LAGGING
+        && bbm.get_mode() == BuckBoostManager::BUCK
+        && state == CHARGING) {
+        bbm.upgrade();
+        cap_pwr_pid.reset();
+        target_i = target_cap_pwr / bbm.filtered_v_c.val;
+    }
+
+    bbm.set_current_loop(bbm.filtered_v_c.val, my_math::limit_abs(target_i, 25.0f));
 }
 
 void PowerManager::calibrate_mode() {

@@ -113,6 +113,8 @@ private:
     bool empty = false;
 
     void buffer_mode();
+    void compute_buffer_compensation();   // buffer_mode 子步骤：计算 buffer 能量补偿量
+    void compute_and_apply_target_power(); // buffer_mode 子步骤：计算并下发目标功率
     void calibrate_mode();
     void check_cap_status();
 };

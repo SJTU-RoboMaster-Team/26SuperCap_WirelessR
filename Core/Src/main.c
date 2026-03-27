@@ -126,7 +126,8 @@ int main(void)
     /*                  WirelessR 配置                  */
     /*-------------------------------------------------*/
     // 初始化 MP4201 设备，检查连接
-    MP4201_Init(&mp4201_dev, mp4201_dev.hi2c);
+    if (MP4201_Init(&mp4201_dev, &I2C_HANDLER_4201) == HAL_OK){
+    MP4201_ConfigBasic(&mp4201_dev);
     // 配置安全参数：最大输出电压 20V，最大输出电流 10A
     MP4201_ConfigureMaximum(&mp4201_dev, WR_MAX_VOUT, WR_MAX_IOUT);
     // 设置无线充输入保护，最低输入电压 5V
@@ -139,6 +140,7 @@ int main(void)
     #endif
     // 启用输出
     MP4201_Enable(&mp4201_dev, 1);
+    }
 
     HAL_TIM_Base_Start_IT(&TIMER_HANDLER_4201_CTRL_LOOP);
     HAL_TIM_Base_Start_IT(&TIMER_HANDLER_4201_ASK_LOOP);
@@ -204,7 +206,7 @@ int main(void)
 
     /* USER CODE BEGIN 3 */
         if (!mp4201_dev.is_connected) {
-            if (MP4201_Init_Retry(&mp4201_dev, mp4201_dev.hi2c, 5, 200)
+            if (MP4201_Init_Retry(&mp4201_dev, &I2C_HANDLER_4201, 100, 200)
                 == HAL_OK) {
                 MP4201_ConfigBasic(&mp4201_dev);
                 MP4201_ConfigureMaximum(&mp4201_dev, WR_MAX_VOUT, WR_MAX_IOUT);

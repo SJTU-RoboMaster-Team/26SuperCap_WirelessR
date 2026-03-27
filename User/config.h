@@ -28,8 +28,12 @@
 #define USART_REFEREE                       USART3
 #define USART_HANDLER_REFEREE               huart3
 
+#define I2C_HANDLER_4201                    hi2c1
+
+#define GPIO_PORT_EN_4201                   GPIOC
+#define GPIO_PIN_EN_4201                    GPIO_PIN_13
 // Parameters
-#define WR_MODE                             1 // 0:CV MODE 1:CP MODE
+#define WR_MODE                             0 // 0:CV MODE 1:CP MODE
 #define WR_MAX_VOUT                         26.f
 #define WR_MAX_IOUT                         5.8f
 #define WR_CP_TARGET                        120

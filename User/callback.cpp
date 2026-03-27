@@ -94,10 +94,10 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef* htim) {
         }
     } else if (htim->Instance == TIMER_4201_CTRL_LOOP) {
         // 2kHz
-        MP4201_StartDMAUpdate(&mp4201_dev);
+        // MP4201_StartDMAUpdate(&mp4201_dev);
     } else if (htim->Instance == TIMER_4201_ASK_LOOP) {
         //4kHz
-        load_modulator.handle();
+        // load_modulator.handle();
     }
 }
 
