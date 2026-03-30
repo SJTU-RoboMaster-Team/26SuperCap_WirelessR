@@ -126,16 +126,14 @@ void MX_HRTIM1_Init(void)
   pTimerCfg.FaultLock = HRTIM_TIMFAULTLOCK_READWRITE;
   pTimerCfg.DeadTimeInsertion = HRTIM_TIMDEADTIMEINSERTION_ENABLED;
   pTimerCfg.DelayedProtectionMode = HRTIM_TIMER_A_B_C_DELAYEDPROTECTION_DISABLED;
-  pTimerCfg.UpdateTrigger = HRTIM_TIMUPDATETRIGGER_TIMER_B;
+  pTimerCfg.UpdateTrigger = HRTIM_TIMUPDATETRIGGER_NONE;
   pTimerCfg.ResetTrigger = HRTIM_TIMRESETTRIGGER_MASTER_CMP1;
   pTimerCfg.ResetUpdate = HRTIM_TIMUPDATEONRESET_ENABLED;
   if (HAL_HRTIM_WaveformTimerConfig(&hhrtim1, HRTIM_TIMERINDEX_TIMER_B, &pTimerCfg) != HAL_OK)
   {
     Error_Handler();
   }
-  pTimerCfg.UpdateTrigger = HRTIM_TIMUPDATETRIGGER_TIMER_C;
   pTimerCfg.ResetTrigger = HRTIM_TIMRESETTRIGGER_MASTER_PER;
-  pTimerCfg.ResetUpdate = HRTIM_TIMUPDATEONRESET_DISABLED;
   if (HAL_HRTIM_WaveformTimerConfig(&hhrtim1, HRTIM_TIMERINDEX_TIMER_C, &pTimerCfg) != HAL_OK)
   {
     Error_Handler();
