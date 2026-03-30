@@ -51,7 +51,6 @@ void HalfBridge::handle() {
         } else {
             out_compare_val = (uint16_t)((float)period * duty);
         }
-        out_compare_val =  27200/2;
         // set the output compare
         if (tim == TIM_C) { ////todo
             __HAL_HRTIM_SETCOMPARE(&hhrtim1, HRTIM_TIMERINDEX_TIMER_C, HRTIM_COMPAREUNIT_1, out_compare_val);
