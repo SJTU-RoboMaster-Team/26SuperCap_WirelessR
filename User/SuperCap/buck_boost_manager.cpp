@@ -11,10 +11,10 @@ extern RefreshFlag refresh_flag;
 // 随着电容端电压逐渐增大，左桥下mos占空比逐渐减小，右桥下mos占空比逐渐增大
 void BuckBoostManager::handle() {
     // 安全检查
-    if (!safety_check()) {
-        stop();
-        return;
-    }
+    // if (!safety_check()) {
+    //     stop();
+    //     return;
+    // }
 
     // 限制目标电流
     target_current = my_math::limit_abs(target_current, config.limits.max_target_current);

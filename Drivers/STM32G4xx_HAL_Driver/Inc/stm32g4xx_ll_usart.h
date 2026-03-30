@@ -56,10 +56,6 @@ static const uint32_t USART_PRESCALER_TAB[] =
   32UL,
   64UL,
   128UL,
-  256UL,
-  256UL,
-  256UL,
-  256UL,
   256UL
 };
 /**

@@ -105,8 +105,8 @@ void HAL_HRTIM_RepetitionEventCallback(HRTIM_HandleTypeDef* hhrtim, uint32_t Tim
     // 25kHz
     if (hhrtim->Instance == HRTIM1) {
         if (TimerIdx == HRTIM_TIMERINDEX_MASTER) {
-            main_control_loop();
-            control_loop.update();
+            // main_control_loop();
+            // control_loop.update();
         }
     }
 }

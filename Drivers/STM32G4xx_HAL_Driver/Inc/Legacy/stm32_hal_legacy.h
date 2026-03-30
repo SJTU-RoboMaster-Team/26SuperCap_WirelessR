@@ -472,9 +472,7 @@ extern "C" {
 #define TYPEPROGRAMDATA_FASTBYTE      FLASH_TYPEPROGRAMDATA_FASTBYTE
 #define TYPEPROGRAMDATA_FASTHALFWORD  FLASH_TYPEPROGRAMDATA_FASTHALFWORD
 #define TYPEPROGRAMDATA_FASTWORD      FLASH_TYPEPROGRAMDATA_FASTWORD
-#if !defined(STM32F2) && !defined(STM32F4) && !defined(STM32F7) && !defined(STM32H7)
 #define PAGESIZE                      FLASH_PAGE_SIZE
-#endif /* STM32F2 && STM32F4 && STM32F7 &&  STM32H7 */
 #define TYPEPROGRAM_FASTBYTE          FLASH_TYPEPROGRAM_BYTE
 #define TYPEPROGRAM_FASTHALFWORD      FLASH_TYPEPROGRAM_HALFWORD
 #define TYPEPROGRAM_FASTWORD          FLASH_TYPEPROGRAM_WORD
@@ -602,15 +600,6 @@ extern "C" {
 #define HAL_SYSCFG_EnableIOAnalogSwitchVDD        HAL_SYSCFG_EnableIOSwitchVDD
 #define HAL_SYSCFG_DisableIOAnalogSwitchVDD       HAL_SYSCFG_DisableIOSwitchVDD
 #endif /* STM32G4 */
-
-#if defined(STM32U5)
-
-#define HAL_SYSCFG_EnableIOAnalogSwitchBooster                 HAL_SYSCFG_EnableIOAnalogBooster
-#define HAL_SYSCFG_DisableIOAnalogSwitchBooster                HAL_SYSCFG_DisableIOAnalogBooster
-#define HAL_SYSCFG_EnableIOAnalogSwitchVoltageSelection        HAL_SYSCFG_EnableIOAnalogVoltageSelection
-#define HAL_SYSCFG_DisableIOAnalogSwitchVoltageSelection       HAL_SYSCFG_DisableIOAnalogVoltageSelection
-
-#endif /* STM32U5 */
 
 #if defined(STM32H5)
 #define SYSCFG_IT_FPU_IOC         SBS_IT_FPU_IOC
@@ -886,10 +875,6 @@ extern "C" {
 #define __HAL_HRTIM_SetCompare        __HAL_HRTIM_SETCOMPARE
 #define __HAL_HRTIM_GetCompare        __HAL_HRTIM_GETCOMPARE
 
-#if defined(STM32F3) || defined(STM32G4) || defined(STM32H7)
-#define HRTIMInterruptResquests  HRTIMInterruptRequests
-#endif /* STM32F3 || STM32G4 || STM32H7 */
-
 #if defined(STM32G4)
 #define HAL_HRTIM_ExternalEventCounterConfig    HAL_HRTIM_ExtEventCounterConfig
 #define HAL_HRTIM_ExternalEventCounterEnable    HAL_HRTIM_ExtEventCounterEnable
@@ -1027,8 +1012,8 @@ extern "C" {
 #define HRTIM_CALIBRATIONRATE_910              (HRTIM_DLLCR_CALRTE_0)
 #define HRTIM_CALIBRATIONRATE_114              (HRTIM_DLLCR_CALRTE_1)
 #define HRTIM_CALIBRATIONRATE_14               (HRTIM_DLLCR_CALRTE_1 | HRTIM_DLLCR_CALRTE_0)
-#endif /* STM32F3 */
 
+#endif /* STM32F3 */
 /**
   * @}
   */
@@ -1279,10 +1264,10 @@ extern "C" {
 #define RTC_TAMPERPIN_PA0  RTC_TAMPERPIN_POS1
 #define RTC_TAMPERPIN_PI8  RTC_TAMPERPIN_POS1
 
-#if defined(STM32H5) || defined(STM32H7RS) || defined(STM32N6)
+#if defined(STM32H5) || defined(STM32H7RS)
 #define TAMP_SECRETDEVICE_ERASE_NONE        TAMP_DEVICESECRETS_ERASE_NONE
 #define TAMP_SECRETDEVICE_ERASE_BKP_SRAM    TAMP_DEVICESECRETS_ERASE_BKPSRAM
-#endif /* STM32H5 || STM32H7RS || STM32N6 */
+#endif /* STM32H5 || STM32H7RS */
 
 #if defined(STM32WBA)
 #define TAMP_SECRETDEVICE_ERASE_NONE            TAMP_DEVICESECRETS_ERASE_NONE
@@ -1294,10 +1279,10 @@ extern "C" {
 #define TAMP_SECRETDEVICE_ERASE_ALL             TAMP_DEVICESECRETS_ERASE_ALL
 #endif /* STM32WBA */
 
-#if defined(STM32H5) || defined(STM32WBA) || defined(STM32H7RS) || defined(STM32N6)
+#if defined(STM32H5) || defined(STM32WBA) || defined(STM32H7RS)
 #define TAMP_SECRETDEVICE_ERASE_DISABLE     TAMP_DEVICESECRETS_ERASE_NONE
 #define TAMP_SECRETDEVICE_ERASE_ENABLE      TAMP_SECRETDEVICE_ERASE_ALL
-#endif /* STM32H5 || STM32WBA || STM32H7RS ||  STM32N6 */
+#endif /* STM32H5 || STM32WBA || STM32H7RS */
 
 #if defined(STM32F7)
 #define RTC_TAMPCR_TAMPXE          RTC_TAMPER_ENABLE_BITS_MASK
@@ -1481,7 +1466,7 @@ extern "C" {
 #define TIM_TIM3_TI1_COMP1COMP2_OUT   TIM_TIM3_TI1_COMP1_COMP2
 #endif
 
-#if defined(STM32U5) || defined(STM32MP2)
+#if defined(STM32U5)
 #define OCREF_CLEAR_SELECT_Pos       OCREF_CLEAR_SELECT_POS
 #define OCREF_CLEAR_SELECT_Msk       OCREF_CLEAR_SELECT_MSK
 #endif
@@ -2029,12 +2014,12 @@ extern "C" {
 /** @defgroup HAL_RTC_Aliased_Functions HAL RTC Aliased Functions maintained for legacy purpose
   * @{
   */
-#if defined(STM32H5) || defined(STM32WBA) || defined(STM32H7RS) || defined(STM32N6)
+#if defined(STM32H5) || defined(STM32WBA) || defined(STM32H7RS)
 #define HAL_RTCEx_SetBoothardwareKey            HAL_RTCEx_LockBootHardwareKey
 #define HAL_RTCEx_BKUPBlock_Enable              HAL_RTCEx_BKUPBlock
 #define HAL_RTCEx_BKUPBlock_Disable             HAL_RTCEx_BKUPUnblock
 #define HAL_RTCEx_Erase_SecretDev_Conf          HAL_RTCEx_ConfigEraseDeviceSecrets
-#endif /* STM32H5 || STM32WBA || STM32H7RS || STM32N6 */
+#endif /* STM32H5 || STM32WBA || STM32H7RS */
 
 /**
   * @}
@@ -3695,7 +3680,7 @@ extern "C" {
 #endif
 
 #if defined(STM32L4) || defined(STM32WB) || defined(STM32G0) || defined(STM32G4) || defined(STM32L5) || \
-      defined(STM32WL) || defined(STM32C0) || defined(STM32N6) || defined(STM32H7RS) || defined(STM32U0)
+    defined(STM32WL) || defined(STM32C0) || defined(STM32U0)
 #define RCC_RTCCLKSOURCE_NO_CLK     RCC_RTCCLKSOURCE_NONE
 #else
 #define RCC_RTCCLKSOURCE_NONE       RCC_RTCCLKSOURCE_NO_CLK
@@ -3946,8 +3931,7 @@ extern "C" {
   */
 #if defined (STM32G0) || defined (STM32L5) || defined (STM32L412xx) || defined (STM32L422xx) || \
     defined (STM32L4P5xx)|| defined (STM32L4Q5xx) || defined (STM32G4) || defined (STM32WL) || defined (STM32U5) || \
-    defined (STM32WBA) || defined (STM32H5) || defined (STM32C0) || defined (STM32N6) || defined (STM32H7RS) ||  \
-    defined (STM32U0) || defined (STM32U3)
+    defined (STM32WBA) || defined (STM32H5) || defined (STM32C0) || defined (STM32H7RS) ||  defined (STM32U0)
 #else
 #define __HAL_RTC_CLEAR_FLAG                      __HAL_RTC_EXTI_CLEAR_FLAG
 #endif

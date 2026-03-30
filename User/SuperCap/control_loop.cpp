@@ -89,12 +89,12 @@ void main_control_loop() {
 
     static bool first = true;
     if (first) {
-        ws2812.start_circular();
+        // ws2812.start_circular();
         first = false;
-        auto s = flash.read_calibrate_parameter();
-        if (cali_estimator.judge_if_reasonable(s)) {
-            cali_estimator.load_calibrate_parameter(s);
-        }
+        // auto s = flash.read_calibrate_parameter();
+        // if (cali_estimator.judge_if_reasonable(s)) {
+        //     cali_estimator.load_calibrate_parameter(s);
+        // }
     }
 
     bbm.update_adc_data(

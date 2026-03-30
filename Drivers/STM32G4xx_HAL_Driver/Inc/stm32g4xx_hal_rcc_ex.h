@@ -1268,7 +1268,7 @@ typedef struct
   * @{
   */
 
-HAL_StatusTypeDef HAL_RCCEx_PeriphCLKConfig(RCC_PeriphCLKInitTypeDef const *PeriphClkInit);
+HAL_StatusTypeDef HAL_RCCEx_PeriphCLKConfig(RCC_PeriphCLKInitTypeDef  *PeriphClkInit);
 void              HAL_RCCEx_GetPeriphCLKConfig(RCC_PeriphCLKInitTypeDef  *PeriphClkInit);
 uint32_t          HAL_RCCEx_GetPeriphCLKFreq(uint32_t PeriphClk);
 
@@ -1296,7 +1296,7 @@ void              HAL_RCCEx_DisableLSCO(void);
   * @{
   */
 
-void              HAL_RCCEx_CRSConfig(RCC_CRSInitTypeDef const *pInit);
+void              HAL_RCCEx_CRSConfig(RCC_CRSInitTypeDef *pInit);
 void              HAL_RCCEx_CRSSoftwareSynchronizationGenerate(void);
 void              HAL_RCCEx_CRSGetSynchronizationInfo(RCC_CRSSynchroInfoTypeDef *pSynchroInfo);
 uint32_t          HAL_RCCEx_CRSWaitSynchronization(uint32_t Timeout);
@@ -1431,20 +1431,6 @@ void              HAL_RCCEx_CRS_ErrorCallback(uint32_t Error);
                 (((__SELECTION__) & RCC_PERIPHCLK_ADC12)       == RCC_PERIPHCLK_ADC12)   || \
                 (((__SELECTION__) & RCC_PERIPHCLK_RTC)         == RCC_PERIPHCLK_RTC))
 
-#elif defined(STM32G411xB) || defined(STM32G411xC)
-#define IS_RCC_PERIPHCLOCK(__SELECTION__)  \
-               ((((__SELECTION__) & RCC_PERIPHCLK_USART1)      == RCC_PERIPHCLK_USART1)  || \
-                (((__SELECTION__) & RCC_PERIPHCLK_USART2)      == RCC_PERIPHCLK_USART2)  || \
-                (((__SELECTION__) & RCC_PERIPHCLK_UART4)       == RCC_PERIPHCLK_UART4)   || \
-                (((__SELECTION__) & RCC_PERIPHCLK_LPUART1)     == RCC_PERIPHCLK_LPUART1) || \
-                (((__SELECTION__) & RCC_PERIPHCLK_I2C1)        == RCC_PERIPHCLK_I2C1)    || \
-                (((__SELECTION__) & RCC_PERIPHCLK_I2C2)        == RCC_PERIPHCLK_I2C2)    || \
-                (((__SELECTION__) & RCC_PERIPHCLK_LPTIM1)      == RCC_PERIPHCLK_LPTIM1)  || \
-                (((__SELECTION__) & RCC_PERIPHCLK_I2S)         == RCC_PERIPHCLK_I2S)     || \
-                (((__SELECTION__) & RCC_PERIPHCLK_FDCAN)       == RCC_PERIPHCLK_FDCAN)   || \
-                (((__SELECTION__) & RCC_PERIPHCLK_RNG)         == RCC_PERIPHCLK_RNG)     || \
-                (((__SELECTION__) & RCC_PERIPHCLK_ADC12)       == RCC_PERIPHCLK_ADC12)   || \
-                (((__SELECTION__) & RCC_PERIPHCLK_RTC)         == RCC_PERIPHCLK_RTC)) 
 #elif defined(STM32G414xx)
 #define IS_RCC_PERIPHCLOCK(__SELECTION__)  \
                ((((__SELECTION__) & RCC_PERIPHCLK_USART1)      == RCC_PERIPHCLK_USART1)  || \

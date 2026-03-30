@@ -120,7 +120,7 @@
   *
   * @retval HAL status
   */
-HAL_StatusTypeDef HAL_RCCEx_PeriphCLKConfig(RCC_PeriphCLKInitTypeDef const *PeriphClkInit)
+HAL_StatusTypeDef HAL_RCCEx_PeriphCLKConfig(RCC_PeriphCLKInitTypeDef  *PeriphClkInit)
 {
   uint32_t tmpregister;
   uint32_t tickstart;
@@ -553,13 +553,6 @@ void HAL_RCCEx_GetPeriphCLKConfig(RCC_PeriphCLKInitTypeDef  *PeriphClkInit)
                                         RCC_PERIPHCLK_LPTIM1  | RCC_PERIPHCLK_SAI1   | RCC_PERIPHCLK_I2S    | RCC_PERIPHCLK_FDCAN    | \
                                         RCC_PERIPHCLK_RNG     | RCC_PERIPHCLK_USB    | RCC_PERIPHCLK_ADC12  | \
                                         RCC_PERIPHCLK_RTC;
-#elif defined(STM32G411xB) || defined(STM32G411xC)
-
-  PeriphClkInit->PeriphClockSelection = RCC_PERIPHCLK_USART1  | RCC_PERIPHCLK_USART2 | RCC_PERIPHCLK_UART4  | \
-                                        RCC_PERIPHCLK_LPUART1 | RCC_PERIPHCLK_I2C1   | RCC_PERIPHCLK_I2C2   | \
-                                        RCC_PERIPHCLK_LPTIM1  | RCC_PERIPHCLK_I2S    | RCC_PERIPHCLK_FDCAN  | \
-                                        RCC_PERIPHCLK_RNG     | RCC_PERIPHCLK_ADC12  | RCC_PERIPHCLK_RTC;
-
 #elif defined(STM32GBK1CB)
 
   PeriphClkInit->PeriphClockSelection = RCC_PERIPHCLK_USART1  | RCC_PERIPHCLK_USART2 | RCC_PERIPHCLK_USART3 | \
@@ -1405,7 +1398,7 @@ __weak void HAL_RCCEx_LSECSS_Callback(void)
   */
 void HAL_RCCEx_EnableLSCO(uint32_t LSCOSource)
 {
-  GPIO_InitTypeDef GPIO_InitStruct = {0};
+  GPIO_InitTypeDef GPIO_InitStruct;
   FlagStatus       pwrclkchanged = RESET;
   FlagStatus       backupchanged = RESET;
 
@@ -1558,7 +1551,7 @@ void HAL_RCCEx_DisableLSCO(void)
   * @param  pInit Pointer on RCC_CRSInitTypeDef structure
   * @retval None
   */
-void HAL_RCCEx_CRSConfig(RCC_CRSInitTypeDef const *pInit)
+void HAL_RCCEx_CRSConfig(RCC_CRSInitTypeDef *pInit)
 {
   uint32_t value;
 
