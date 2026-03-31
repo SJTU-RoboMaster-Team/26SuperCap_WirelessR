@@ -130,24 +130,24 @@ int main(void)
     /*                  WirelessR 配置                  */
     /*-------------------------------------------------*/
     // 初始化 MP4201 设备，检查连接
-    if (MP4201_Init(&mp4201_dev, &I2C_HANDLER_4201) == HAL_OK){
-    MP4201_ConfigBasic(&mp4201_dev);
-    // 配置安全参数：最大输出电压 20V，最大输出电流 10A
-    MP4201_ConfigureMaximum(&mp4201_dev, WR_MAX_VOUT, WR_MAX_IOUT);
-    // 设置无线充输入保护，最低输入电压 5V
-    MP4201_ConfigWirelessInput(&mp4201_dev, WR_MIN_VIN);
-    // 模式设置 (config.h)
-    #if WR_MODE == 1
-    MP4201_SetCP_Target(&mp4201_dev, WR_CP_TARGET, WR_CP_PI_KP, WR_CP_PI_KI);
-    #elif WR_MODE == 0
-    MP4201_SetCV_Target(&mp4201_dev, WR_CV_TARGET);
-    #endif
-    // 启用输出
-    MP4201_Enable(&mp4201_dev, 1);
-    }
-
-    HAL_TIM_Base_Start_IT(&TIMER_HANDLER_4201_CTRL_LOOP);
-    HAL_TIM_Base_Start_IT(&TIMER_HANDLER_4201_ASK_LOOP);
+    // if (MP4201_Init(&mp4201_dev, &I2C_HANDLER_4201) == HAL_OK){
+    // MP4201_ConfigBasic(&mp4201_dev);
+    // // 配置安全参数：最大输出电压 20V，最大输出电流 10A
+    // MP4201_ConfigureMaximum(&mp4201_dev, WR_MAX_VOUT, WR_MAX_IOUT);
+    // // 设置无线充输入保护，最低输入电压 5V
+    // MP4201_ConfigWirelessInput(&mp4201_dev, WR_MIN_VIN);
+    // // 模式设置 (config.h)
+    // #if WR_MODE == 1
+    // MP4201_SetCP_Target(&mp4201_dev, WR_CP_TARGET, WR_CP_PI_KP, WR_CP_PI_KI);
+    // #elif WR_MODE == 0
+    // MP4201_SetCV_Target(&mp4201_dev, WR_CV_TARGET);
+    // #endif
+    // // 启用输出
+    // MP4201_Enable(&mp4201_dev, 1);
+    // }
+    //
+    // HAL_TIM_Base_Start_IT(&TIMER_HANDLER_4201_CTRL_LOOP);
+    // HAL_TIM_Base_Start_IT(&TIMER_HANDLER_4201_ASK_LOOP);
 
     /*-------------------------------------------------*/
     /*                   SuperCap 配置                  */
@@ -177,11 +177,6 @@ int main(void)
 
     HAL_Delay(50);
 
-    HAL_ADC_Start_IT(&hadc1);
-    HAL_ADC_Start_IT(&hadc2);
-    HAL_ADC_Start_IT(&hadc3);
-    HAL_ADC_Start_IT(&hadc4);
-    HAL_ADC_Start_IT(&hadc5);
     HAL_ADC_Start_DMA(&hadc1, (uint32_t *)adc1_buf, 8);
     HAL_ADC_Start_DMA(&hadc2, (uint32_t *)adc2_buf, 8);
     HAL_ADC_Start_DMA(&hadc3, (uint32_t *)adc3_buf, 8);
@@ -191,7 +186,7 @@ int main(void)
 
     HAL_HRTIM_SoftwareUpdate(&hhrtim1, HRTIM_TIMERUPDATE_MASTER | HRTIM_TIMERUPDATE_B | HRTIM_TIMERUPDATE_C);
     HAL_HRTIM_WaveformCountStart(&hhrtim1, HRTIM_TIMERID_MASTER | HRTIM_TIMERID_TIMER_B | HRTIM_TIMERID_TIMER_C);
-    __HAL_HRTIM_TIMER_ENABLE_IT(&hhrtim1, HRTIM_TIMERINDEX_MASTER, HRTIM_MASTER_IT_MREP);
+    HAL_HRTIM_SimpleBaseStart_IT(&hhrtim1,HRTIM_TIMERINDEX_MASTER);
     HAL_Delay(5);
     HAL_HRTIM_WaveformOutputStart(&hhrtim1, HRTIM_OUTPUT_TB1 | HRTIM_OUTPUT_TB2 | HRTIM_OUTPUT_TC1 | HRTIM_OUTPUT_TC2);
     // HAL_TIM_Base_Start_IT(&TIMER_HANDLER_BUZZ_PWM); // 中断疑似没用
@@ -210,21 +205,21 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-        if (!mp4201_dev.is_connected) {
-            if (MP4201_Init_Retry(&mp4201_dev, &I2C_HANDLER_4201, 100, 200)
-                == HAL_OK) {
-                MP4201_ConfigBasic(&mp4201_dev);
-                MP4201_ConfigureMaximum(&mp4201_dev, WR_MAX_VOUT, WR_MAX_IOUT);
-                MP4201_ConfigWirelessInput(&mp4201_dev, WR_MIN_VIN);
-                #if WR_MODE == 1
-                MP4201_SetCP_Target(&mp4201_dev, WR_CP_TARGET, WR_CP_PI_KP, WR_CP_PI_KI);
-                #elif WR_MODE == 0
-                MP4201_SetCV_Target(&mp4201_dev, WR_CV_TARGET);
-                #endif
-
-                MP4201_Enable(&mp4201_dev, 1);
-            }
-        }
+        // if (!mp4201_dev.is_connected) {
+        //     if (MP4201_Init_Retry(&mp4201_dev, &I2C_HANDLER_4201, 100, 200)
+        //         == HAL_OK) {
+        //         MP4201_ConfigBasic(&mp4201_dev);
+        //         MP4201_ConfigureMaximum(&mp4201_dev, WR_MAX_VOUT, WR_MAX_IOUT);
+        //         MP4201_ConfigWirelessInput(&mp4201_dev, WR_MIN_VIN);
+        //         #if WR_MODE == 1
+        //         MP4201_SetCP_Target(&mp4201_dev, WR_CP_TARGET, WR_CP_PI_KP, WR_CP_PI_KI);
+        //         #elif WR_MODE == 0
+        //         MP4201_SetCV_Target(&mp4201_dev, WR_CV_TARGET);
+        //         #endif
+        //
+        //         MP4201_Enable(&mp4201_dev, 1);
+        //     }
+        // }
     }
   /* USER CODE END 3 */
 }

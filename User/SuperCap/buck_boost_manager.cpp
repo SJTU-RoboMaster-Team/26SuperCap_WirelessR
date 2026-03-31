@@ -127,7 +127,7 @@ void BuckBoostManager::mode_switcher() {
             if (target_voltage < v_i - config.thresholds.buckboost_exit_gap_buck) {
                 // Vout 显著低于 Vin -> 切入 Buck
                 mode = BUCK;
-            } else if (target_voltage > v_i) {
+            } else if (target_voltage > v_i + config.thresholds.buckboost_exit_gap_boost) {
                 // Vout 显著高于 Vin -> 切入 Boost
                 mode = BOOST;
             }
