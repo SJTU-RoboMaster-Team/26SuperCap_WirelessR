@@ -104,7 +104,7 @@ void PowerManager::check_cap_status() {
 
     // 将施密特触发器状态同步到标志位
     full_charge = cap_full_smtrg.state;   // 电压 ≥ 26V 后置位，≤ 25.5V 复位
-    empty       = cap_low_smtrg.state;    // 电压 ≤ 10V 后置位，≥ 11.5V 复位
+    empty       = !cap_low_smtrg.state;    // 电压 ≤ 10V 后置位，≥ 11.5V 复位
 
     // 根据电容电压分级限制最大放电功率
     if (!cap_limit_30power_smtrg.state) {
