@@ -108,14 +108,14 @@ void main_control_loop() {
     tick_40us++;
 
     // bbm.stop();
-    bbm.set_voltage_loop(set_voltage);
-    bbm.start();
-    bbm.handle();
-    return;
-    const bool in_calibrate_mode = (pm.mode == PowerManager::CALIBRATE);
-    const bool referee_connected = referee.connected();
+    // bbm.set_voltage_loop(set_voltage);
+    // bbm.start();
+    // bbm.handle();
+    // return;
+    const bool in_calibrate_mode        = (pm.mode == PowerManager::CALIBRATE);
+    const bool referee_connected        = referee.connected();
     const bool referee_disconnect_alarm = !in_calibrate_mode && !referee_connected && tick_40us > 75000;
-    const bool cap_over_voltage_alarm = (bbm.v_c > 29.0f);
+    const bool cap_over_voltage_alarm   = (bbm.v_c > 29.0f);
 
     if (!in_calibrate_mode) {
         if (referee_connected) {

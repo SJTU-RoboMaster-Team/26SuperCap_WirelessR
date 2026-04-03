@@ -57,8 +57,8 @@ void Error_Handler(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
+#define DEAD_TIME 80
 #define PWM_PERIOD 27200
-#define DEAD_TIME 100
 #define EN_4201_Pin GPIO_PIN_13
 #define EN_4201_GPIO_Port GPIOC
 #define BUZZ_Pin GPIO_PIN_0

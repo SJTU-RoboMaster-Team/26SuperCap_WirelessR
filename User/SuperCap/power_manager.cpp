@@ -46,8 +46,8 @@ void PowerManager::handle() {
         power_limit = max_charging_pwr = power_parameter.chassis_power_limit;
     }else {
         // 裁判系统断联！！！
-        target_buffer = 60;
-        power_parameter.buffer_energy = 60;
+        target_buffer = 40;
+        power_parameter.buffer_energy = 40;
         power_limit = max_charging_pwr = power_parameter.chassis_power_limit = 50;
     }
 
@@ -197,9 +197,9 @@ void PowerManager::compute_buffer_compensation() {
         //   buffer_surplus < 0 (buffer不足) → PID输出 > 0 → compensation < 0 → 电容多放电
         //   buffer_surplus > 0 (buffer过多) → PID输出 < 0 → compensation > 0 → 电容多充电
         // 偏差大时用完整输出，接近目标时仅用积分项以减少抖动
-        compensation = buffer_far_from_target.state
-                     ? -referee_buffer_pid.get_output()
-                     : -referee_buffer_pid.get_iout();
+        compensation = (buffer_far_from_target.state)
+                     ? (-referee_buffer_pid.get_output())
+                     : (-referee_buffer_pid.get_iout());
     } else {
         compensation = 0.0f;
     }
