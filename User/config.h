@@ -25,7 +25,7 @@
 #define HRTIMER_BBM                         HRTIM1
 #define HRTIMER_HANDLER_BBM                 hhrtim1
 
-#define FDCAN                               FDCAN1
+#define FDCAN                               FDCAN3
 #define FDCAN_HANDLER                       hfdcan3
 
 #define USART_REFEREE                       USART3
