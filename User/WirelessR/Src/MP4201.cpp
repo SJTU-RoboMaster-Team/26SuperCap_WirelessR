@@ -103,9 +103,10 @@ HAL_StatusTypeDef MP4201_Init_Retry(MP4201_Handle_t* dev, I2C_HandleTypeDef* hi2
     static uint32_t last_try_time = 0;
     if (dev->is_connected != false) { return HAL_OK; }
     // 如果已经达到最大重试次数，则返回彻底失败
-    if (current_retry >= retries) {
-        return HAL_ERROR;
-    }
+    // if (current_retry >= retries) {
+    //     return HAL_ERROR;
+    // }
+    (void) retries;
 
     // 利用 HAL_GetTick() 进行非阻塞的时间判断
     if (HAL_GetTick() - last_try_time >= delay_ms || last_try_time == 0) {
