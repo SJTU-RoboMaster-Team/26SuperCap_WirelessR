@@ -103,7 +103,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef* htim) {
 
 void HAL_HRTIM_RepetitionEventCallback(HRTIM_HandleTypeDef* hhrtim, uint32_t TimerIdx) {
     // 25kHz
-    if (hhrtim->Instance == HRTIM1) {
+    if (hhrtim->Instance == HRTIMER_BBM) {
         if (TimerIdx == HRTIM_TIMERINDEX_MASTER) {
             main_control_loop();
             control_loop.update();

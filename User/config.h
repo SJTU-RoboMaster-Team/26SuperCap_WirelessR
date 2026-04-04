@@ -22,7 +22,10 @@
 #define TIMER_HANDLER_4201_CTRL_LOOP        htim5
 #define TIMER_4201_ASK_LOOP                 TIM7
 #define TIMER_HANDLER_4201_ASK_LOOP         htim7
+#define HRTIMER_BBM                         HRTIM1
+#define HRTIMER_HANDLER_BBM                 hhrtim1
 
+#define FDCAN                               FDCAN1
 #define FDCAN_HANDLER                       hfdcan3
 
 #define USART_REFEREE                       USART3
@@ -32,7 +35,8 @@
 
 #define GPIO_PORT_EN_4201                   GPIOC
 #define GPIO_PIN_EN_4201                    GPIO_PIN_13
-// Parameters
+
+// WR_Parameters
 #define WR_MODE                             0 // 0:CV MODE 1:CP MODE
 #define WR_MAX_VOUT                         26.f
 #define WR_MAX_IOUT                         5.8f

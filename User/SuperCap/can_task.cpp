@@ -1,7 +1,7 @@
 //
 // Created by yixin on 2024/1/18.
 //
-
+#include "../config.h"
 #include "can_task.h"
 #include "../callback.h"
 
@@ -11,7 +11,7 @@ uint8_t CAN1_rx_data[8];
 extern RefreshFlag refresh_flag;
 
 void HAL_FDCAN_RxFifo0Callback(FDCAN_HandleTypeDef *hfdcan, uint32_t RxFifo0ITs) {
-    if (hfdcan->Instance == FDCAN1) {
+    if (hfdcan->Instance == FDCAN) {
         if ((RxFifo0ITs & FDCAN_IT_RX_FIFO0_NEW_MESSAGE) != RESET) {
             FDCAN_RxHeaderTypeDef RxHeader;
             HAL_FDCAN_GetRxMessage(hfdcan, FDCAN_RX_FIFO0, &RxHeader, CAN1_rx_data);

@@ -1,10 +1,10 @@
 //
 // Created by yixin on 2024/1/18.
 //
-
+#include "../config.h"
 #include "half_bridge.h"
 
-extern HRTIM_HandleTypeDef hhrtim1;
+extern HRTIM_HandleTypeDef HRTIMER_HANDLER_BBM;
 
 HalfBridge left(HalfBridge::TIM_C), right(HalfBridge::TIM_B);
 
@@ -15,9 +15,9 @@ void HalfBridge::start() {
     if (!enable) {
         enable = true;
         if (tim == TIM_C) {
-            HAL_HRTIM_WaveformOutputStart(&hhrtim1, HRTIM_OUTPUT_TC1 | HRTIM_OUTPUT_TC2);
+            HAL_HRTIM_WaveformOutputStart(&HRTIMER_HANDLER_BBM, HRTIM_OUTPUT_TC1 | HRTIM_OUTPUT_TC2);
         } else {
-            HAL_HRTIM_WaveformOutputStart(&hhrtim1, HRTIM_OUTPUT_TB1 | HRTIM_OUTPUT_TB2);
+            HAL_HRTIM_WaveformOutputStart(&HRTIMER_HANDLER_BBM, HRTIM_OUTPUT_TB1 | HRTIM_OUTPUT_TB2);
         }
     }
 }
@@ -25,10 +25,10 @@ void HalfBridge::start() {
 void HalfBridge::stop() {
     enable = false;
     if (tim == TIM_C) {
-        HAL_HRTIM_WaveformOutputStop(&hhrtim1,
+        HAL_HRTIM_WaveformOutputStop(&HRTIMER_HANDLER_BBM,
                                      HRTIM_OUTPUT_TC1 | HRTIM_OUTPUT_TC2);
     } else {
-        HAL_HRTIM_WaveformOutputStop(&hhrtim1,
+        HAL_HRTIM_WaveformOutputStop(&HRTIMER_HANDLER_BBM,
                                      HRTIM_OUTPUT_TB1 | HRTIM_OUTPUT_TB2);
     }
 }
@@ -53,9 +53,9 @@ void HalfBridge::handle() {
         }
         // set the output compare
         if (tim == TIM_C) { ////todo
-            __HAL_HRTIM_SETCOMPARE(&hhrtim1, HRTIM_TIMERINDEX_TIMER_C, HRTIM_COMPAREUNIT_1, out_compare_val);
+            __HAL_HRTIM_SETCOMPARE(&HRTIMER_HANDLER_BBM, HRTIM_TIMERINDEX_TIMER_C, HRTIM_COMPAREUNIT_1, out_compare_val);
         } else {
-            __HAL_HRTIM_SETCOMPARE(&hhrtim1, HRTIM_TIMERINDEX_TIMER_B, HRTIM_COMPAREUNIT_1, out_compare_val);
+            __HAL_HRTIM_SETCOMPARE(&HRTIMER_HANDLER_BBM, HRTIM_TIMERINDEX_TIMER_B, HRTIM_COMPAREUNIT_1, out_compare_val);
         }
     }
 
