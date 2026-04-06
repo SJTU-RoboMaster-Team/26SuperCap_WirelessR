@@ -161,7 +161,7 @@ private:
     struct Debug {
         float v_just_read;
         float calc_res;
-    } debug;
+    } debug{};
 
     bool auto_mode_switcher = false;
 

@@ -12,11 +12,12 @@
 
 class PowerManager {
 public:
-    PowerManager(BuckBoostManager& bbm, PID& cap_pwr_pid, PID& chassis_pwr_pid, PID& referee_buffer_pid):
-        bbm(bbm),
+    PowerManager(BuckBoostManager& bbm, PID& cap_pwr_pid, PID& chassis_pwr_pid, PID& referee_buffer_pid,PID&wireless_recharge_pid):
         cap_pwr_pid(cap_pwr_pid),
         chassis_pwr_pid(chassis_pwr_pid),
-        referee_buffer_pid(referee_buffer_pid) {};
+        referee_buffer_pid(referee_buffer_pid),
+        wireless_recharge_pid(wireless_recharge_pid),
+        bbm(bbm) {};
 
     void start() { bbm.start(); }
 
@@ -85,6 +86,8 @@ public:
     uint8_t err_code = 0;
     power_parameter_t power_parameter{};
 
+    bool wireless_active = false; // 由 WirelessChargeManager 设置
+
     // 获取压缩后的状态码
     uint8_t get_mode_and_state() const { return mode << 4 | state; }
 
@@ -97,6 +100,7 @@ private:
     PID& cap_pwr_pid;
     PID& chassis_pwr_pid;
     PID& referee_buffer_pid;
+    PID& wireless_recharge_pid;
     BuckBoostManager& bbm;
 
     // 用于状态判断的迟滞比较
@@ -112,9 +116,14 @@ private:
     bool full_charge = false;
     bool empty = false;
 
+    // QUICK_CHARGE 模式（无线充电）
+    bool quick_charge_entered = false;
+
     void buffer_mode();
-    void compute_buffer_compensation();   // buffer_mode 子步骤：计算 buffer 能量补偿量
-    void compute_and_apply_target_power(); // buffer_mode 子步骤：计算并下发目标功率
+    void quick_charge_mode();
+    void compute_buffer_compensation();        // buffer_mode 子步骤：计算 buffer 能量补偿量
+    void compute_and_apply_target_power();      // buffer_mode 子步骤：计算并下发目标功率
+    void compute_wireless_output();       // quick_charge_mode 子步骤：无线充电目标功率计算
     void calibrate_mode();
     void check_cap_status();
 };

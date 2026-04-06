@@ -16,10 +16,10 @@
 #include "referee_comm.h"
 #include "types.h"
 #include "ws2812/ws2812.h"
-#include <cstdio>
 #include "../callback.h"
 #include "adc_sample.h"
 #include "../config.h"
+#include "../WirelessR/Inc/wireless_charge_manager.h"
 
 static uint32_t tick_40us;
 
@@ -45,10 +45,10 @@ PID cap_pwr_pid(0.0003, 0, 0.05, 0, 0.05);
 PID chassis_pwr_pid(0.008, 0, 0.01, 0, 10);
 // PID referee_buffer_pid(1.5f, 0.0007, 0.00, 10.0f/0.0007f, 150);
 PID referee_buffer_pid(1.5f, 0.0002, 0.01, 10000.0f, 150);
-
+PID wireless_recharge_pid(0.005f, 0.0001f,0.05f,0.0f,WR_CHARGE_MAX_CURRENT);
 
 BuckBoostManager bbm(left, right, vout_pid, iout_pid);
-PowerManager pm(bbm, cap_pwr_pid, chassis_pwr_pid, referee_buffer_pid);
+PowerManager pm(bbm, cap_pwr_pid, chassis_pwr_pid, referee_buffer_pid,wireless_recharge_pid);
 
 FlashMemoryManager flash;
 
@@ -62,7 +62,11 @@ LED led = LED(&ws2812);
 
 extern RefereeComm referee;
 
+extern MP4201_Handle_t mp4201_dev;
+
 CapMsg msg;
+
+WirelessChargeManager wcm(mp4201_dev, pm);
 
 extern RefreshFlag refresh_flag;
 // this loop will be run at 100 Hz
@@ -169,6 +173,7 @@ void main_control_loop() {
     // for debug purpose
     //    left.handle();
     //    right.handle();
+    wcm.handle();
     pm.handle();
     bbm.handle();
 
