@@ -40,10 +40,10 @@ HAL_StatusTypeDef MP4201_Init(MP4201_Handle_t* dev, I2C_HandleTypeDef* hi2c) {
     dev->pi.Ki = 0.01f;
     dev->pi.integral_sum = 0.0f;
 
-    // 1. 硬件激活 (优化：避免重试时反复产生 50ms 延时)
+    // 1. 硬件激活 (优化：避免重试时反复产生 10ms 延时)
     if (HAL_GPIO_ReadPin(GPIO_PORT_EN_4201, GPIO_PIN_EN_4201) == GPIO_PIN_RESET) {
         HAL_GPIO_WritePin(GPIO_PORT_EN_4201, GPIO_PIN_EN_4201, GPIO_PIN_SET);
-        HAL_Delay(50); // 仅首次冷启动时需要等待
+        HAL_Delay(10); // 仅首次冷启动时需要等待
     }
 
     // 2. 检查设备 (Ping) - 将超时时间从 100ms 缩短到 10ms，提升非阻塞轮询速度
