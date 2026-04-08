@@ -6,6 +6,7 @@
 #define WIRELESS_CHARGE_MANAGER_H
 
 #include "MP4201.h"
+#include "modulator.h"
 #include "../../SuperCap/power_manager.h"
 #include "../../config.h"
 /**
@@ -18,8 +19,8 @@
  */
 class WirelessChargeManager {
 public:
-    WirelessChargeManager(MP4201_Handle_t& mp4201, PowerManager& pm)
-        : mp4201_(mp4201), pm_(pm) {}
+    WirelessChargeManager(MP4201_Handle_t& mp4201, PowerManager& pm, Modulator& modulator)
+        : mp4201_(mp4201), pm_(pm), modulator_(modulator) {}
 
     /**
      * @brief 主循环，在 main_control_loop 中调用 (10kHz)
@@ -51,6 +52,7 @@ public:
 private:
     MP4201_Handle_t& mp4201_;
     PowerManager& pm_;
+    Modulator& modulator_;
 
     // 无线充电压检测 (施密特触发器)
     SchmittTrigger<float> vin_trigger_{config.vin_upper_threshold, config.vin_lower_threshold, false};

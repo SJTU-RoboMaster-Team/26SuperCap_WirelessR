@@ -37,6 +37,9 @@ void WirelessChargeManager::enter_wireless_mode() {
     // BuckBoost 由 PM 的 QUICKCHARGE 模式继续管理，不在此处操作
     MP4201_Enable(&mp4201_, 1);
     MP4201_SetCP_Target(&mp4201_, 120,0, 0.005);
+
+    // 启动负载调制器
+    modulator_.start();
 }
 
 void WirelessChargeManager::exit_wireless_mode() {
@@ -44,6 +47,9 @@ void WirelessChargeManager::exit_wireless_mode() {
 
     // 关闭 MP4201
     MP4201_Enable(&mp4201_, 0);
+
+    // 停止负载调制器
+    modulator_.stop();
 
     // 重置能量累积器
     energy_accumulator_ = 0;

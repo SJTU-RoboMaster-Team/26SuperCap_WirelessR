@@ -159,7 +159,7 @@
           <Type>0</Type>
           <LineNumber>211</LineNumber>
           <EnabledFlag>1</EnabledFlag>
-          <Address>134259320</Address>
+          <Address>134259360</Address>
           <ByteObject>0</ByteObject>
           <HtxType>0</HtxType>
           <ManyObjects>0</ManyObjects>
@@ -169,6 +169,38 @@
           <Filename>../Core/Src/main.c</Filename>
           <ExecCommand></ExecCommand>
           <Expression>\\26_SuperCap_WirelessR_V2\../Core/Src/main.c\211</Expression>
+        </Bp>
+        <Bp>
+          <Number>1</Number>
+          <Type>0</Type>
+          <LineNumber>100</LineNumber>
+          <EnabledFlag>1</EnabledFlag>
+          <Address>134240984</Address>
+          <ByteObject>0</ByteObject>
+          <HtxType>0</HtxType>
+          <ManyObjects>0</ManyObjects>
+          <SizeOfObject>0</SizeOfObject>
+          <BreakByAccess>0</BreakByAccess>
+          <BreakIfRCount>1</BreakIfRCount>
+          <Filename>..\User\callback.cpp</Filename>
+          <ExecCommand></ExecCommand>
+          <Expression>\\26_SuperCap_WirelessR_V2\../User/callback.cpp\100</Expression>
+        </Bp>
+        <Bp>
+          <Number>2</Number>
+          <Type>0</Type>
+          <LineNumber>56</LineNumber>
+          <EnabledFlag>1</EnabledFlag>
+          <Address>134258882</Address>
+          <ByteObject>0</ByteObject>
+          <HtxType>0</HtxType>
+          <ManyObjects>0</ManyObjects>
+          <SizeOfObject>0</SizeOfObject>
+          <BreakByAccess>0</BreakByAccess>
+          <BreakIfRCount>1</BreakIfRCount>
+          <Filename>..\User\WirelessR\Src\modulator.cpp</Filename>
+          <ExecCommand></ExecCommand>
+          <Expression>\\26_SuperCap_WirelessR_V2\../User/WirelessR/Src/modulator.cpp\56</Expression>
         </Bp>
       </Breakpoint>
       <WatchWindow1>
@@ -196,6 +228,11 @@
           <count>4</count>
           <WinNumber>1</WinNumber>
           <ItemText>set_voltage</ItemText>
+        </Ww>
+        <Ww>
+          <count>5</count>
+          <WinNumber>1</WinNumber>
+          <ItemText>modulator_state_</ItemText>
         </Ww>
       </WatchWindow1>
       <WatchWindow2>

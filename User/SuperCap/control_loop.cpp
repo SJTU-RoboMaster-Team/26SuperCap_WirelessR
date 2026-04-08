@@ -63,10 +63,11 @@ LED led = LED(&ws2812);
 extern RefereeComm referee;
 
 extern MP4201_Handle_t mp4201_dev;
+extern Modulator load_modulator;
 
 CapMsg msg;
 
-WirelessChargeManager wcm(mp4201_dev, pm);
+WirelessChargeManager wcm(mp4201_dev, pm, load_modulator);
 
 extern RefreshFlag refresh_flag;
 // this loop will be run at 100 Hz
