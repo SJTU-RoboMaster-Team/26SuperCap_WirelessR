@@ -115,6 +115,7 @@ void PowerManager::check_cap_status() {
         under_voltage_tick = 0;
     } else {
         max_releasing_pwr = charge_parameter.allowed_max_releasing_pwr;  // 电压正常：不限制
+        msg.under_voltage_flag = 0x00;
     }
 }
 
