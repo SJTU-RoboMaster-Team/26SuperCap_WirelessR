@@ -37,7 +37,7 @@
 #define GPIO_PIN_EN_4201                    GPIO_PIN_13
 
 // WR_Parameters
-#define WR_MODE                             0 // 0:CV MODE 1:CP MODE
+#define WR_MODE                             1 // 0:CV MODE 1:CP MODE
 #define WR_MAX_VOUT                         26.f
 #define WR_MAX_IOUT                         5.8f
 #define WR_CP_TARGET                        120
