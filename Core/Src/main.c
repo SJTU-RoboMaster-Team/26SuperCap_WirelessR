@@ -257,15 +257,12 @@ void SystemClock_Config(void)
 
 /* USER CODE BEGIN 4 */
 static HAL_StatusTypeDef MP4201_ApplyRuntimeConfig(void) {
-    if (MP4201_ConfigBasic(&mp4201_dev) != HAL_OK) {
-        return HAL_ERROR;
-    }
+    mp4201_dev.state = MP4201_STATE_PROCESSING;
+    HAL_StatusTypeDef ifConfigBasicSuccess = MP4201_ConfigBasic(&mp4201_dev);
 
-    MP4201_ConfigureMaximum(&mp4201_dev, WR_MAX_VOUT, WR_MAX_IOUT);
+    HAL_StatusTypeDef ifConfigMaximumSuccess = MP4201_ConfigureMaximum(&mp4201_dev, WR_MAX_VOUT, WR_MAX_IOUT);
 
-    if (MP4201_ConfigWirelessInput(&mp4201_dev, WR_MIN_VIN) != HAL_OK) {
-        return HAL_ERROR;
-    }
+    HAL_StatusTypeDef ifConfigWRInput = MP4201_ConfigWirelessInput(&mp4201_dev, WR_MIN_VIN);
 
 #if WR_MODE == 1
     MP4201_SetCP_Target(&mp4201_dev, WR_CP_TARGET, WR_CP_PI_KP, WR_CP_PI_KI);
@@ -276,8 +273,10 @@ static HAL_StatusTypeDef MP4201_ApplyRuntimeConfig(void) {
     if (!mp4201_dev.is_connected) {
         return HAL_ERROR;
     }
-
-    return MP4201_Enable(&mp4201_dev, 1);
+    HAL_StatusTypeDef ifEnableSuccess =  MP4201_Enable(&mp4201_dev, 1);
+    mp4201_dev.state = MP4201_STATE_IDLE;
+    if (ifConfigBasicSuccess | ifConfigMaximumSuccess | ifConfigWRInput | ifEnableSuccess){return HAL_ERROR;}
+    return HAL_OK;
 }
 
 static void MP4201_RecoverI2CIfNeeded(void) {
