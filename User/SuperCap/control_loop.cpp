@@ -20,7 +20,6 @@
 #include "../callback.h"
 #include "adc_sample.h"
 #include "../config.h"
-
 static uint32_t tick_40us;
 
 extern HalfBridge left, right;
@@ -82,7 +81,7 @@ void CAN_control_loop() {
  so loop_flag is written in end of bbm.handle()
  when referee disconnected, loop_flag is set true to keep program on
 */
-float set_voltage = 6; // for debug purpose
+float set_voltage = 10; // for debug purpose
 void main_control_loop() {
     static uint32_t loop_cnt = 0;
     loop_cnt++;
