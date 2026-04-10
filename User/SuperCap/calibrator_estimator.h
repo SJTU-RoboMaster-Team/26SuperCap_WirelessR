@@ -24,11 +24,11 @@ public:
   float calibrate_cap_voltage(float voltage) const;
   float calibrate_cap_current(float current) const;
 
-  AverageFilter filtered_in_voltage = AverageFilter(20);
-  AverageFilter filtered_in_current = AverageFilter(20);
-  AverageFilter filtered_out_current = AverageFilter(20);
-  AverageFilter filtered_cap_voltage = AverageFilter(20);
-  AverageFilter filtered_cap_current = AverageFilter(20);
+  AverageFilter<20> filtered_in_voltage;
+  AverageFilter<20> filtered_in_current;
+  AverageFilter<20> filtered_out_current;
+  AverageFilter<20> filtered_cap_voltage;
+  AverageFilter<20> filtered_cap_current;
 
   LinearRegressionModel lrm;
   LinearRegressionModel lrm2;

@@ -158,37 +158,26 @@ public:
     }
 };
 
+template<uint16_t Size>
 class AverageFilter {
 public:
-    explicit AverageFilter(uint16_t size) : size(size) {
-        buffer = new float[size];
-        if (buffer == nullptr) {
-            valid = false;
-            return;
-        }
-        valid = true;
-        for (int i = 0; i < size; i++) {
+    AverageFilter() {
+        for (uint16_t i = 0; i < Size; i++) {
             buffer[i] = 0;
         }
     }
 
     float update(float v) {
-        if (!valid){
-            return 0;
-        }
         sum -= buffer[head];
         buffer[head] = v;
         sum += v;
-        head = (head + 1) % size;
-        val = sum / (float )size;
+        head = (head + 1) % Size;
+        val = sum / static_cast<float>(Size);
         write_times++;
         return val;
     }
 
     float get() const {
-        if (!valid){
-            return 0;
-        }
         return val;
     }
 
@@ -197,8 +186,7 @@ public:
     }
 
     void reset(){
-        if (!valid)return;
-        for (int i = 0; i < size; ++i) {
+        for (uint16_t i = 0; i < Size; ++i) {
             buffer[i] =0;
         }
         head = 0;
@@ -207,24 +195,18 @@ public:
         write_times = 0;
     }
 private:
-    float *buffer;
-    uint16_t size;
+    float buffer[Size]{};
     uint16_t head = 0;
     float sum = 0;
-    bool valid = false;
     float val = 0;
     uint32_t write_times = 0;
 };
 
 class AverageFilterInt {
 public:
-    explicit AverageFilterInt() {
-        if (buffer == nullptr) {
-            valid = false;
-            return;
-        }
+    AverageFilterInt() {
         valid = true;
-        for (int i = 0; i < size; i++) {
+        for (uint16_t i = 0; i < size; i++) {
             buffer[i] = 0;
         }
     }
