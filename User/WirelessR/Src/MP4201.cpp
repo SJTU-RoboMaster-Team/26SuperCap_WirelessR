@@ -54,6 +54,7 @@ HAL_StatusTypeDef MP4201_Init(MP4201_Handle_t* dev, I2C_HandleTypeDef* hi2c) {
     dev->wpt_switch_flag_ = false;
     dev->is_connected = false;
     dev->needs_i2c_recovery = false;
+    dev->lost_connection_tick =0;
 
     // 初始化 PI
     dev->pi.Kp = 0.0f;

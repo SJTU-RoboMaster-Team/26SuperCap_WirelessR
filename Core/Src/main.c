@@ -197,10 +197,13 @@ int main(void)
 
     /* USER CODE BEGIN 3 */
         if (!mp4201_dev.is_connected) {
-            MP4201_RecoverI2CIfNeeded();
-            if (MP4201_Init_Retry(&mp4201_dev, &I2C_HANDLER_4201, 100, 200)
-                == HAL_OK) {
-                MP4201_ApplyRuntimeConfig();
+            if (mp4201_dev.lost_connection_tick++ == 1000000) {
+                mp4201_dev.lost_connection_tick = 0;
+                MP4201_RecoverI2CIfNeeded();
+                if (MP4201_Init_Retry(&mp4201_dev, &I2C_HANDLER_4201, 100, 200)
+                    == HAL_OK) {
+                    MP4201_ApplyRuntimeConfig();
+                }
             }
         }
     }
