@@ -147,7 +147,7 @@ typedef struct {
     // --- 错误计数 ---
     uint32_t errorCount;
     uint8_t err_status[2];
-
+    uint32_t lost_connection_tick;
     // --- 无线充电 ---
     uint8_t wpt_switch_flag_;
 
