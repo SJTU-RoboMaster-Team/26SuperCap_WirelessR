@@ -151,7 +151,8 @@ typedef struct {
     // --- 无线充电 ---
     uint8_t wpt_switch_flag_;
 
-    uint8_t is_connected;
+    volatile uint8_t is_connected;
+    volatile uint8_t needs_i2c_recovery;
 } MP4201_Handle_t;
 
 /* ==============================================================================

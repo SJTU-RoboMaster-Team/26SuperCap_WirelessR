@@ -18,6 +18,25 @@ float MP4201::feedForwardDebug = 0.0f;
 // 私有辅助函数
 static HAL_StatusTypeDef MP4201_WriteReg_Blocking(MP4201_Handle_t* dev, uint8_t reg, uint16_t data);
 static void MP4201_RunControlAlgorithm(MP4201_Handle_t* dev);
+static void MP4201_MarkDisconnected(MP4201_Handle_t* dev);
+
+static void MP4201_MarkDisconnected(MP4201_Handle_t* dev) {
+    dev->is_connected = false;
+    dev->needs_i2c_recovery = true;
+    dev->isEnabled = 0;
+    dev->state = MP4201_STATE_IDLE;
+    dev->vin_meas = 0.0f;
+    dev->vout_meas = 0.0f;
+    dev->iin_meas = 0.0f;
+    dev->iout_meas = 0.0f;
+    dev->power_meas = 0.0f;
+    dev->calculated_vout_cmd = 0.0f;
+    dev->calculated_iout_cmd = 0.0f;
+    dev->isMaxIout = false;
+    dev->isCVphase = false;
+    dev->wpt_switch_flag_ = false;
+    dev->pi.integral_sum = 0.0f;
+}
 
 /**
   * @brief  初始化 (阻塞式)
@@ -34,6 +53,7 @@ HAL_StatusTypeDef MP4201_Init(MP4201_Handle_t* dev, I2C_HandleTypeDef* hi2c) {
     dev->errorCount = 0;
     dev->wpt_switch_flag_ = false;
     dev->is_connected = false;
+    dev->needs_i2c_recovery = false;
 
     // 初始化 PI
     dev->pi.Kp = 0.0f;
@@ -48,10 +68,12 @@ HAL_StatusTypeDef MP4201_Init(MP4201_Handle_t* dev, I2C_HandleTypeDef* hi2c) {
 
     // 2. 检查设备 (Ping) - 将超时时间从 100ms 缩短到 10ms，提升非阻塞轮询速度
     if (HAL_I2C_IsDeviceReady(dev->hi2c, dev->devAddr, 3, 10) != HAL_OK) {
+        MP4201_MarkDisconnected(dev);
         return HAL_ERROR;
     }
 
     dev->is_connected = true;
+    dev->needs_i2c_recovery = false;
     return HAL_OK;
 }
 
@@ -65,6 +87,7 @@ HAL_StatusTypeDef MP4201_ConfigBasic(MP4201_Handle_t* dev) {
     // 软关机 (Soft Shutdown) - 必须先关机才能改方向
     uint8_t stop_cmd = 0x00;
     if (HAL_I2C_Mem_Write(dev->hi2c, dev->devAddr, REG_OPERATION, I2C_MEMADD_SIZE_8BIT, &stop_cmd, 1, 100) != HAL_OK) {
+        MP4201_MarkDisconnected(dev);
         return HAL_ERROR;
     }
     HAL_Delay(200); // 这是必要的放电延时，由于它仅在连接成功的时刻执行一次，所以可以接受阻塞
@@ -81,6 +104,7 @@ HAL_StatusTypeDef MP4201_ConfigBasic(MP4201_Handle_t* dev) {
     ctrl1_val |= (1 << 2); // Bit 2: CC Mode (Current Limit Mode)
 
     if (HAL_I2C_Mem_Write(dev->hi2c, dev->devAddr, REG_MFR_CTRL1, I2C_MEMADD_SIZE_8BIT, &ctrl1_val, 1, 100) != HAL_OK) {
+        MP4201_MarkDisconnected(dev);
         return HAL_ERROR;
     }
 
@@ -137,11 +161,16 @@ HAL_StatusTypeDef MP4201_ConfigureMaximum(MP4201_Handle_t* dev, float maxVout, f
   * @brief  配置无线充电输入端保护
   */
 HAL_StatusTypeDef MP4201_ConfigWirelessInput(MP4201_Handle_t* dev, float minVin) {
+    if (!dev->is_connected) {
+        return HAL_ERROR;
+    }
+
     // 1. 开启 VIN Regulation 功能 (MFR_OVP_CTRL bit 7)
     uint8_t config_byte = 0b11011011; // 1000 1000
 
     if (HAL_I2C_Mem_Write(dev->hi2c, dev->devAddr, REG_MFR_OVP_CTRL, I2C_MEMADD_SIZE_8BIT, &config_byte, 1, 100) !=
         HAL_OK) {
+        MP4201_MarkDisconnected(dev);
         return HAL_ERROR;
     }
 
@@ -151,6 +180,10 @@ HAL_StatusTypeDef MP4201_ConfigWirelessInput(MP4201_Handle_t* dev, float minVin)
 }
 
 HAL_StatusTypeDef MP4201_Enable(MP4201_Handle_t* dev, uint8_t enable) {
+    if (!dev->is_connected) {
+        return HAL_ERROR;
+    }
+
     uint8_t data = enable ? 0x80 : 0x00;
     dev->isEnabled = enable;
     dev->pi.integral_sum = 0.0f;
@@ -162,6 +195,9 @@ HAL_StatusTypeDef MP4201_Enable(MP4201_Handle_t* dev, uint8_t enable) {
                                                  &data,
                                                  1,
                                                  100);
+    if (status != HAL_OK) {
+        MP4201_MarkDisconnected(dev);
+    }
     return status;
 }
 
@@ -203,6 +239,11 @@ void MP4201_SetCP_Target(MP4201_Handle_t* dev, float power, float Kp, float Ki) 
 }
 
 HAL_StatusTypeDef MP4201_StartDMAUpdate(MP4201_Handle_t* dev) {
+    if (!dev->is_connected) {
+        dev->state = MP4201_STATE_IDLE;
+        return HAL_ERROR;
+    }
+
     if (dev->state != MP4201_STATE_IDLE) {
         return HAL_BUSY;
     }
@@ -220,8 +261,7 @@ HAL_StatusTypeDef MP4201_StartDMAUpdate(MP4201_Handle_t* dev) {
 
     // 如果启动失败 (同步失败)
     if (status != HAL_OK) {
-        // 把状态还原为 IDLE，否则下次进不来了
-        dev->state = MP4201_STATE_IDLE;
+        MP4201_MarkDisconnected(dev);
     }
 
     return status;
@@ -243,7 +283,10 @@ void MP4201_OnRxCplt(MP4201_Handle_t* dev) {
             dev->vin_meas = new_vin + offset_vin;
             dev->state = MP4201_STATE_READ_VOUT;
             if (HAL_I2C_Mem_Read_DMA(dev->hi2c, dev->devAddr, REG_READ_VOUT, I2C_MEMADD_SIZE_8BIT, dev->dmaRxBuffer, 2)
-                != HAL_OK) { dev->errorCount++; }
+                != HAL_OK) {
+                dev->errorCount++;
+                MP4201_MarkDisconnected(dev);
+            }
             break;
         }
         case MP4201_STATE_READ_VOUT: {
@@ -260,7 +303,10 @@ void MP4201_OnRxCplt(MP4201_Handle_t* dev) {
 
             dev->state = MP4201_STATE_READ_IIN;
             if (HAL_I2C_Mem_Read_DMA(dev->hi2c, dev->devAddr, REG_READ_IIN, I2C_MEMADD_SIZE_8BIT, dev->dmaRxBuffer, 2)
-                != HAL_OK) { dev->errorCount++; }
+                != HAL_OK) {
+                dev->errorCount++;
+                MP4201_MarkDisconnected(dev);
+            }
             break;
         }
         case MP4201_STATE_READ_IIN: {
@@ -268,7 +314,10 @@ void MP4201_OnRxCplt(MP4201_Handle_t* dev) {
             if (new_iin > 1.0f) { dev->iin_meas = new_iin + offset_iin; } else { dev->iin_meas = new_iin; }
             dev->state = MP4201_STATE_READ_IOUT;
             if (HAL_I2C_Mem_Read_DMA(dev->hi2c, dev->devAddr, REG_READ_IOUT, I2C_MEMADD_SIZE_8BIT, dev->dmaRxBuffer, 2)
-                != HAL_OK) { dev->errorCount++; }
+                != HAL_OK) {
+                dev->errorCount++;
+                MP4201_MarkDisconnected(dev);
+            }
             break;
         }
         case MP4201_STATE_READ_IOUT: {
@@ -288,6 +337,9 @@ void MP4201_OnRxCplt(MP4201_Handle_t* dev) {
                 power_out_filter_alpha;
             dev->state = MP4201_STATE_PROCESSING;
             MP4201_CheckStatus(dev);
+            if (!dev->is_connected) {
+                break;
+            }
             MP4201_RunControlAlgorithm(dev);
             break;
         }
@@ -329,7 +381,7 @@ void MP4201_OnTxCplt(MP4201_Handle_t* dev) {
 void MP4201_OnError(MP4201_Handle_t* dev) {
     // WS2812_SetAll(255, 0, 0); // 出现I2C错误，灯亮红色
     dev->errorCount++;
-    dev->state = MP4201_STATE_IDLE;
+    MP4201_MarkDisconnected(dev);
 }
 
 /**
@@ -485,8 +537,7 @@ static void MP4201_RunControlAlgorithm(MP4201_Handle_t* dev) {
                                                          dev->dmaTxBuffer,
                                                          2);
         if (status != HAL_OK) {
-            // 发送失败，回到 IDLE 等待下一次周期恢复
-            dev->state = MP4201_STATE_IDLE;
+            MP4201_MarkDisconnected(dev);
         }
     } else {
         dev->state = MP4201_STATE_IDLE;
@@ -494,13 +545,25 @@ static void MP4201_RunControlAlgorithm(MP4201_Handle_t* dev) {
 }
 
 static HAL_StatusTypeDef MP4201_WriteReg_Blocking(MP4201_Handle_t* dev, uint8_t reg, uint16_t data) {
+    if (!dev->is_connected) {
+        return HAL_ERROR;
+    }
+
     uint8_t buf[2];
     buf[0] = data & 0xFF;
     buf[1] = (data >> 8) & 0xFF;
-    return HAL_I2C_Mem_Write(dev->hi2c, dev->devAddr, reg, I2C_MEMADD_SIZE_8BIT, buf, 2, 100);
+    HAL_StatusTypeDef status = HAL_I2C_Mem_Write(dev->hi2c, dev->devAddr, reg, I2C_MEMADD_SIZE_8BIT, buf, 2, 100);
+    if (status != HAL_OK) {
+        MP4201_MarkDisconnected(dev);
+    }
+    return status;
 }
 
 void MP4201_SetDirection(MP4201_Handle_t* dev, uint8_t direction) {
+    if (!dev->is_connected) {
+        return;
+    }
+
     bool was_enabled = dev->isEnabled;
 
     // 软件停机 (Soft Stop)
@@ -525,7 +588,14 @@ void MP4201_SetDirection(MP4201_Handle_t* dev, uint8_t direction) {
         ctrl1_val |= (1 << 1);
         ctrl1_val |= (1 << 0);
         // 3. 写回寄存器
-        HAL_I2C_Mem_Write(dev->hi2c, dev->devAddr, REG_MFR_CTRL1, I2C_MEMADD_SIZE_8BIT, &ctrl1_val, 1, 100);
+        if (HAL_I2C_Mem_Write(dev->hi2c, dev->devAddr, REG_MFR_CTRL1, I2C_MEMADD_SIZE_8BIT, &ctrl1_val, 1, 100) !=
+            HAL_OK) {
+            MP4201_MarkDisconnected(dev);
+            return;
+        }
+    } else {
+        MP4201_MarkDisconnected(dev);
+        return;
     }
 
     // 软件启动 (Soft Start)
@@ -533,11 +603,17 @@ void MP4201_SetDirection(MP4201_Handle_t* dev, uint8_t direction) {
 }
 
 void MP4201_CheckStatus(MP4201_Handle_t* dev) {
+    if (!dev->is_connected) {
+        return;
+    }
+
     // 读取 0x79 寄存器 (2字节)
     if (HAL_I2C_Mem_Read(dev->hi2c, dev->devAddr, REG_STATUS_WORD, I2C_MEMADD_SIZE_8BIT, dev->err_status, 2, 100) !=
         HAL_OK) {
         dev->err_status[0] = 0xFF;
         dev->err_status[1] = 0xFF;
+        MP4201_MarkDisconnected(dev);
+        return;
     }
     if (dev->err_status[0] != 0x00) {
         dev->errorCount++;

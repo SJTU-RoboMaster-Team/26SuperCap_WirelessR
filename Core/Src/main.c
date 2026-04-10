@@ -73,6 +73,9 @@ void SystemClock_Config(void);
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 extern void CAN_filter_config(FDCAN_HandleTypeDef* hfdcan);
+static HAL_StatusTypeDef MP4201_ApplyRuntimeConfig(void);
+static void MP4201_RecoverI2CIfNeeded(void);
+
 /* USER CODE END 0 */
 
 /**
@@ -131,19 +134,7 @@ int main(void)
     /*-------------------------------------------------*/
     // 初始化 MP4201 设备，检查连接
     if (MP4201_Init(&mp4201_dev, &I2C_HANDLER_4201) == HAL_OK){
-    MP4201_ConfigBasic(&mp4201_dev);
-    // 配置安全参数：最大输出电压 20V，最大输出电流 10A
-    MP4201_ConfigureMaximum(&mp4201_dev, WR_MAX_VOUT, WR_MAX_IOUT);
-    // 设置无线充输入保护，最低输入电压
-    MP4201_ConfigWirelessInput(&mp4201_dev, WR_MIN_VIN);
-    // 模式设置 (config.h)
-    #if WR_MODE == 1
-    MP4201_SetCP_Target(&mp4201_dev, WR_CP_TARGET, WR_CP_PI_KP, WR_CP_PI_KI);
-    #elif WR_MODE == 0
-    MP4201_SetCV_Target(&mp4201_dev, WR_CV_TARGET);
-    #endif
-    // 启用输出b
-    MP4201_Enable(&mp4201_dev, 1);
+        MP4201_ApplyRuntimeConfig();
     }
 
     HAL_TIM_Base_Start_IT(&TIMER_HANDLER_4201_CTRL_LOOP);
@@ -206,18 +197,10 @@ int main(void)
 
     /* USER CODE BEGIN 3 */
         if (!mp4201_dev.is_connected) {
+            MP4201_RecoverI2CIfNeeded();
             if (MP4201_Init_Retry(&mp4201_dev, &I2C_HANDLER_4201, 100, 200)
                 == HAL_OK) {
-                MP4201_ConfigBasic(&mp4201_dev);
-                MP4201_ConfigureMaximum(&mp4201_dev, WR_MAX_VOUT, WR_MAX_IOUT);
-                MP4201_ConfigWirelessInput(&mp4201_dev, WR_MIN_VIN);
-                #if WR_MODE == 1
-                MP4201_SetCP_Target(&mp4201_dev, WR_CP_TARGET, WR_CP_PI_KP, WR_CP_PI_KI);
-                #elif WR_MODE == 0
-                MP4201_SetCV_Target(&mp4201_dev, WR_CV_TARGET);
-                #endif
-
-                MP4201_Enable(&mp4201_dev, 1);
+                MP4201_ApplyRuntimeConfig();
             }
         }
     }
@@ -270,7 +253,39 @@ void SystemClock_Config(void)
 }
 
 /* USER CODE BEGIN 4 */
+static HAL_StatusTypeDef MP4201_ApplyRuntimeConfig(void) {
+    if (MP4201_ConfigBasic(&mp4201_dev) != HAL_OK) {
+        return HAL_ERROR;
+    }
 
+    MP4201_ConfigureMaximum(&mp4201_dev, WR_MAX_VOUT, WR_MAX_IOUT);
+
+    if (MP4201_ConfigWirelessInput(&mp4201_dev, WR_MIN_VIN) != HAL_OK) {
+        return HAL_ERROR;
+    }
+
+#if WR_MODE == 1
+    MP4201_SetCP_Target(&mp4201_dev, WR_CP_TARGET, WR_CP_PI_KP, WR_CP_PI_KI);
+#elif WR_MODE == 0
+    MP4201_SetCV_Target(&mp4201_dev, WR_CV_TARGET);
+#endif
+
+    if (!mp4201_dev.is_connected) {
+        return HAL_ERROR;
+    }
+
+    return MP4201_Enable(&mp4201_dev, 1);
+}
+
+static void MP4201_RecoverI2CIfNeeded(void) {
+    if (!mp4201_dev.needs_i2c_recovery) {
+        return;
+    }
+
+    HAL_I2C_DeInit(&I2C_HANDLER_4201);
+    MX_I2C1_Init();
+    mp4201_dev.needs_i2c_recovery = 0;
+}
 /* USER CODE END 4 */
 
 /**
