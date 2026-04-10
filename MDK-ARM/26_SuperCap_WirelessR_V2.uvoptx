@@ -185,6 +185,11 @@
           <WinNumber>1</WinNumber>
           <ItemText>modulator_state_</ItemText>
         </Ww>
+        <Ww>
+          <count>6</count>
+          <WinNumber>1</WinNumber>
+          <ItemText>hi2c1</ItemText>
+        </Ww>
       </WatchWindow1>
       <WatchWindow2>
         <Ww>

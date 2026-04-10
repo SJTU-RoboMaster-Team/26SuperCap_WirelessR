@@ -131,6 +131,7 @@ int main(void)
     /*-------------------------------------------------*/
     // 初始化 MP4201 设备，检查连接
     if (MP4201_Init(&mp4201_dev, &I2C_HANDLER_4201) == HAL_OK){
+    mp4201_dev.state = MP4201_STATE_PROCESSING; // 锁住状态，防止定时器ISR在配置期间抢占I2C总线
     MP4201_ConfigBasic(&mp4201_dev);
     // 配置安全参数：最大输出电压 20V，最大输出电流 10A
     MP4201_ConfigureMaximum(&mp4201_dev, WR_MAX_VOUT, WR_MAX_IOUT);
@@ -144,6 +145,7 @@ int main(void)
     #endif
     // 启用输出b
     MP4201_Enable(&mp4201_dev, 1);
+    mp4201_dev.state = MP4201_STATE_IDLE; // 配置完成，释放状态，允许DMA更新
     }
 
     HAL_TIM_Base_Start_IT(&TIMER_HANDLER_4201_CTRL_LOOP);
@@ -211,6 +213,7 @@ int main(void)
                 mp4201_dev.lost_connection_tick = 0;
                 if (MP4201_Init_Retry(&mp4201_dev, &I2C_HANDLER_4201, 100, 200)
                     == HAL_OK) {
+                    mp4201_dev.state = MP4201_STATE_PROCESSING; // 锁住状态，防止定时器ISR在配置期间抢占I2C总线
                     MP4201_ConfigBasic(&mp4201_dev);
                     MP4201_ConfigureMaximum(&mp4201_dev, WR_MAX_VOUT, WR_MAX_IOUT);
                     MP4201_ConfigWirelessInput(&mp4201_dev, WR_MIN_VIN);
@@ -221,8 +224,11 @@ int main(void)
                     #endif
 
                     MP4201_Enable(&mp4201_dev, 1);
+                    mp4201_dev.state = MP4201_STATE_IDLE; // 配置完成，释放
                 }
             }
+        }else {
+            mp4201_dev.lost_connection_tick = 0;
         }
     }
   /* USER CODE END 3 */

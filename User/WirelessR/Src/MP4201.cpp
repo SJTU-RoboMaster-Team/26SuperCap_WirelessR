@@ -249,7 +249,7 @@ void MP4201_OnRxCplt(MP4201_Handle_t* dev) {
             dev->vin_meas = new_vin + offset_vin;
             dev->state = MP4201_STATE_READ_VOUT;
             if (HAL_I2C_Mem_Read_DMA(dev->hi2c, dev->devAddr, REG_READ_VOUT, I2C_MEMADD_SIZE_8BIT, dev->dmaRxBuffer, 2)
-                != HAL_OK) { dev->errorCount++; }
+                != HAL_OK) { dev->errorCount++; dev->is_connected = false;}
             break;
         }
         case MP4201_STATE_READ_VOUT: {
@@ -266,7 +266,7 @@ void MP4201_OnRxCplt(MP4201_Handle_t* dev) {
 
             dev->state = MP4201_STATE_READ_IIN;
             if (HAL_I2C_Mem_Read_DMA(dev->hi2c, dev->devAddr, REG_READ_IIN, I2C_MEMADD_SIZE_8BIT, dev->dmaRxBuffer, 2)
-                != HAL_OK) { dev->errorCount++; }
+                != HAL_OK) { dev->errorCount++; dev->is_connected = false;}
             break;
         }
         case MP4201_STATE_READ_IIN: {
@@ -274,7 +274,7 @@ void MP4201_OnRxCplt(MP4201_Handle_t* dev) {
             if (new_iin > 1.0f) { dev->iin_meas = new_iin + offset_iin; } else { dev->iin_meas = new_iin; }
             dev->state = MP4201_STATE_READ_IOUT;
             if (HAL_I2C_Mem_Read_DMA(dev->hi2c, dev->devAddr, REG_READ_IOUT, I2C_MEMADD_SIZE_8BIT, dev->dmaRxBuffer, 2)
-                != HAL_OK) { dev->errorCount++; }
+                != HAL_OK) { dev->errorCount++; dev->is_connected = false;}
             break;
         }
         case MP4201_STATE_READ_IOUT: {
@@ -335,6 +335,7 @@ void MP4201_OnTxCplt(MP4201_Handle_t* dev) {
 void MP4201_OnError(MP4201_Handle_t* dev) {
     // WS2812_SetAll(255, 0, 0); // 出现I2C错误，灯亮红色
     dev->errorCount++;
+    dev->is_connected = false;
     dev->state = MP4201_STATE_IDLE;
 }
 
