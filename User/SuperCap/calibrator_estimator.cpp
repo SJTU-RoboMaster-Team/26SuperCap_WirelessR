@@ -159,6 +159,7 @@ void Calibrator::handle() {
   case STEP_V:
       // calibrate input and cap voltage by connecting out and cap; bbm is stopped
     static float step_v_value = 14;
+    step_v_value = 14;
     //            static LinearRegressionModel lrm_vcap;
     if (step_v_value<27) {
       if (my_math::near(filtered_cap_voltage.get(), (float) step_v_value, 1) &&
@@ -193,6 +194,7 @@ void Calibrator::handle() {
     flash.save_calibrate_parameter(save_flash_parameter(3));
     flash.flash_calibrate_parameter();
     calibrate_step = DONE;
+    break;
   case DONE:
   default:
     break;

@@ -8,11 +8,11 @@
 #include "task_manager/timer.h"
 
 struct ADC_Buffer{
-    uint16_t  v_in;
-    uint16_t  v_c;
-    int16_t i_in;
-    int16_t i_o;
-    int16_t i_c;
+    uint16_t  v_in = 0;
+    uint16_t  v_c = 0;
+    int16_t i_in = 0;
+    int16_t i_o = 0;
+    int16_t i_c = 0;
 };
 
 class ADC_SAMPLE {
@@ -31,7 +31,7 @@ public:
         return avg_;
     }
 
-    ADC_SAMPLE(uint16_t times, uint16_t* buf):times_(times),buf_(buf) {
+    ADC_SAMPLE(uint16_t times, uint16_t* buf):avg_(0),times_(times),buf_(buf) {
         freq_meter_.times_for_each_ = times;
     }
 };

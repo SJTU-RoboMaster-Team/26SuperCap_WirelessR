@@ -96,7 +96,7 @@ public:
 template<typename T>
 class SchmittTrigger {
 public:
-    SchmittTrigger(T upper_threshold, T lower_threshold, T state) : upper_threshold(upper_threshold),
+    SchmittTrigger(T upper_threshold, T lower_threshold, bool state) : upper_threshold(upper_threshold),
                                                                     lower_threshold(lower_threshold), state(state) {};
 
     T upper_threshold, lower_threshold;

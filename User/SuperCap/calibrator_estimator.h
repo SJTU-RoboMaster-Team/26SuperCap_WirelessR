@@ -42,7 +42,7 @@ public:
     STEP_V,
     STORAGE,
     DONE,
-  }calibrate_step;
+  }calibrate_step = NONE;
 
   void start_calibrate(){
     if (calibrate_step == NONE){

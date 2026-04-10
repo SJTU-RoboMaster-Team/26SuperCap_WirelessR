@@ -82,6 +82,7 @@ void PowerManager::handle() {
             break;
         case CALIBRATE:
             calibrate_mode();
+            break;
         default:
             break;
     }
@@ -109,6 +110,7 @@ void PowerManager::check_cap_status() {
     // 根据电容电压分级限制最大放电功率
     if (!cap_limit_30power_smtrg.state) {
         max_releasing_pwr = -30.0f;        // 电压极低 (<12V)：严格限制放电
+        msg.under_voltage_flag = 0x01;
     } else if (!cap_limit_60power_smtrg.state) {
         max_releasing_pwr = -60.0f;        // 电压偏低 (<15V)：中等限制
         msg.under_voltage_flag = 0x01;
