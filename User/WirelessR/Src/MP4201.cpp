@@ -34,6 +34,7 @@ HAL_StatusTypeDef MP4201_Init(MP4201_Handle_t* dev, I2C_HandleTypeDef* hi2c) {
     dev->errorCount = 0;
     dev->wpt_switch_flag_ = false;
     dev->is_connected = false;
+    dev->lost_connection_tick = 0;
 
     // 初始化 PI
     dev->pi.Kp = 0.0f;
@@ -222,6 +223,7 @@ HAL_StatusTypeDef MP4201_StartDMAUpdate(MP4201_Handle_t* dev) {
     if (status != HAL_OK) {
         // 把状态还原为 IDLE，否则下次进不来了
         dev->state = MP4201_STATE_IDLE;
+        dev->is_connected = false;
     }
 
     return status;
@@ -237,6 +239,10 @@ void MP4201_OnRxCplt(MP4201_Handle_t* dev) {
     const float v_out_filter_alpha = 0.7f;
     const float power_out_filter_alpha = 0.05f;
 
+    if (dev->is_connected == false) {
+        dev->state = MP4201_STATE_IDLE;
+        return;
+    }
     switch (dev->state) {
         case MP4201_STATE_READ_VIN: {
             float new_vin = raw_val * SCALE_READ_V_LSB;
