@@ -156,6 +156,13 @@ public:
         last_tick_trend = this_trend;
         return trend;
     }
+
+    void reset() {
+        trend = NORMAL;
+        last_tick_trend = NORMAL;
+        this_trend = NORMAL;
+        cnt = 0;
+    }
 };
 
 class AverageFilter {

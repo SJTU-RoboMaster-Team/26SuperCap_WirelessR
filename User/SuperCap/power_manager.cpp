@@ -73,12 +73,13 @@ void PowerManager::handle() {
     }
 
     // 执行控制模式 其余两种模式用不到，暂时不考虑
-    if (wireless_active) {
-        mode = QUICK_CHARGE;
-    } else{
+    if (!wireless_active && last_wireless_active) {
+        exit_quick_charge_mode();
         mode = BUFFER;
-        quick_charge_entered = false;
+    } else if (wireless_active) {
+        mode = QUICK_CHARGE;
     }
+    last_wireless_active = wireless_active;
 
     switch (mode) {
         case BUFFER:
@@ -125,8 +126,8 @@ void PowerManager::check_cap_status() {
     }
 }
 
-void PowerManager::buffer_mode() {
     // Buffer Mode 目标：
+void PowerManager::buffer_mode() {
     //   底盘实际功率 ≤ 裁判系统功率上限
     //   利用超级电容吸收/释放功率差额，维护 buffer 能量在安全水位
 
@@ -286,6 +287,22 @@ void PowerManager::quick_charge_mode() {
     if (bbm.is_working()) {
         compute_wireless_output();
     }
+}
+
+void PowerManager::exit_quick_charge_mode() {
+    quick_charge_entered = false;
+
+    cap_pwr_pid.reset();
+    chassis_pwr_pid.reset();
+    referee_buffer_pid.reset();
+    wireless_recharge_pid.reset();
+    follow_trend_estimator.reset();
+
+    compensation = 0.0f;
+    target_cap_pwr = 0.0f;
+
+    bbm.stop();
+    bbm.set_current_loop(bbm.filtered_v_c.val, 0.0f);
 }
 
 void PowerManager::compute_wireless_output() {

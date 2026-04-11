@@ -118,9 +118,11 @@ private:
 
     // QUICK_CHARGE 模式（无线充电）
     bool quick_charge_entered = false;
+    bool last_wireless_active = false;
 
     void buffer_mode();
     void quick_charge_mode();
+    void exit_quick_charge_mode();
     void compute_buffer_compensation();        // buffer_mode 子步骤：计算 buffer 能量补偿量
     void compute_and_apply_target_power();      // buffer_mode 子步骤：计算并下发目标功率
     void compute_wireless_output();       // quick_charge_mode 子步骤：无线充电目标功率计算

@@ -7,8 +7,6 @@
 void WirelessChargeManager::handle() {
     // 1. 读取无线充输入电压，更新施密特触发器
     float vin = mp4201_.vin_meas;
-    vin_trigger_.upper_threshold = config.vin_upper_threshold;
-    vin_trigger_.lower_threshold = config.vin_lower_threshold;
     bool vin_ok = vin_trigger_.update(vin);
 
     // 2. 模式切换
