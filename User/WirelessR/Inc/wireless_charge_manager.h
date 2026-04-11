@@ -23,7 +23,7 @@ public:
         : mp4201_(mp4201), pm_(pm), modulator_(modulator) {}
 
     /**
-     * @brief 主循环，在 main_control_loop 中调用 (10kHz)
+     * @brief 主循环，在 main_control_loop 中调用 (25kHz)
      */
     void handle();
 
@@ -40,7 +40,7 @@ public:
         float max_charge_current = WR_CHARGE_MAX_CURRENT;           // 最大充电电流 (A)
         float energy_per_bonus = WR_CHARGE_ENERGY_PER_BONUS;        // 每多少 J 能量差获得一次 bonus
         uint32_t bonus_per_joule = WR_CHARGE_BONUS_PER_JOULE;       // 每次 bonus 增加的底盘能量
-        float dt = 40e-6;                                           // 控制周期 (s), 25kHz -> 40us
+        float dt = WR_CHARGE_LOOP_DT;                               // 控制周期 (s)，由主控制环频率派生
     } config;
 
     // ---- 实时数据 (供外部调试/显示) ----

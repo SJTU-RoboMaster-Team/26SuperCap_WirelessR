@@ -5,9 +5,17 @@
 #include "../Inc/wireless_charge_manager.h"
 
 void WirelessChargeManager::handle() {
-    // 1. 读取无线充输入电压，更新施密特触发器
-    float vin = mp4201_.vin_meas;
-    bool vin_ok = vin_trigger_.update(vin);
+    //    读取无线充输入电压，更新施密特触发器
+    //    I2C 瞬断时 MP4201_MarkDisconnected 会把 vin_meas 清 0，
+    //    直接喂给 schmitt 会立刻触发退出。此时保持上一次的状态，等待 I2C 恢复。
+    bool vin_ok;
+    if (mp4201_.is_connected) {
+        float vin = mp4201_.vin_meas;
+        vin_ok = vin_trigger_.update(vin);
+    } else {
+        // 通信掉线期间维持原状态 (由 vin_trigger_.state 保存)
+        vin_ok = vin_trigger_.state;
+    }
 
     // 2. 模式切换
     if (vin_ok && !wireless_active_) {
@@ -49,10 +57,7 @@ void WirelessChargeManager::exit_wireless_mode() {
     // 停止负载调制器
     modulator_.stop();
 
-    // 重置能量累积器
-    energy_accumulator_ = 0;
-    supercap_in_energy = 0;
-    chassis_out_energy = 0;
+    // 不清零energy_accounting
 }
 
 void WirelessChargeManager::energy_accounting() {

@@ -269,9 +269,10 @@ static HAL_StatusTypeDef MP4201_ApplyRuntimeConfig(void) {
     if (!mp4201_dev.is_connected) {
         return HAL_ERROR;
     }
-    HAL_StatusTypeDef ifEnableSuccess =  MP4201_Enable(&mp4201_dev, 1);
+    //  不在此处 Enable MP4201。输出的使能由 WirelessChargeManager 根据
+    //  vin schmitt 判断后统一管理，避免无线充未就位时 MP4201 被错误开启。
     mp4201_dev.state = MP4201_STATE_IDLE;
-    if (ifConfigBasicSuccess | ifConfigMaximumSuccess | ifConfigWRInput | ifEnableSuccess){return HAL_ERROR;}
+    if (ifConfigBasicSuccess | ifConfigMaximumSuccess | ifConfigWRInput) { return HAL_ERROR; }
     return HAL_OK;
 }
 

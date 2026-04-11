@@ -73,11 +73,15 @@ void PowerManager::handle() {
     }
 
     // 执行控制模式 其余两种模式用不到，暂时不考虑
-    if (!wireless_active && last_wireless_active) {
-        exit_quick_charge_mode();
-        mode = BUFFER;
-    } else if (wireless_active) {
-        mode = QUICK_CHARGE;
+    // 只在 BUFFER ↔ QUICK_CHARGE 之间参与无线充切换，保护 CALIBRATE/STAND_BY/CUSTOM
+    const bool wireless_switch_allowed = (mode == BUFFER || mode == QUICK_CHARGE);
+    if (wireless_switch_allowed) {
+        if (!wireless_active && last_wireless_active) {
+            exit_quick_charge_mode();
+            mode = BUFFER;
+        } else if (wireless_active && !last_wireless_active) {
+            mode = QUICK_CHARGE;
+        }
     }
     last_wireless_active = wireless_active;
 
@@ -94,8 +98,8 @@ void PowerManager::handle() {
             break;
     }
 
-    // 错误检测
-    if (bbm.v_i < 15.0f) {
+    // 错误检测 无线充模式下屏蔽
+    if (mode != QUICK_CHARGE && bbm.v_i < 15.0f) {
         err_code |= 4; // 输入欠压
         bbm.stop();
     } else {
@@ -301,7 +305,6 @@ void PowerManager::exit_quick_charge_mode() {
     compensation = 0.0f;
     target_cap_pwr = 0.0f;
 
-    bbm.stop();
     bbm.set_current_loop(bbm.filtered_v_c.val, 0.0f);
 }
 
