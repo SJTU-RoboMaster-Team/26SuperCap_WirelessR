@@ -337,7 +337,7 @@ void MP4201_OnRxCplt(MP4201_Handle_t* dev) {
             dev->power_meas = dev->power_meas * (1.0f - power_out_filter_alpha) + new_power_out *
                 power_out_filter_alpha;
             dev->state = MP4201_STATE_PROCESSING;
-            MP4201_CheckStatus(dev);
+            // MP4201_CheckStatus(dev);
             if (!dev->is_connected) {
                 break;
             }
