@@ -124,7 +124,6 @@ HAL_StatusTypeDef MP4201_ConfigBasic(MP4201_Handle_t* dev) {
   * @retval HAL_OK(成功), HAL_ERROR(彻底失败), HAL_BUSY(还在重试等待间隔中)
   */
 HAL_StatusTypeDef MP4201_Init_Retry(MP4201_Handle_t* dev, I2C_HandleTypeDef* hi2c, uint8_t retries, uint32_t delay_ms) {
-    static uint8_t current_retry = 0;
     static uint32_t last_try_time = 0;
     if (dev->is_connected != false) { return HAL_OK; }
     // 如果已经达到最大重试次数，则返回彻底失败
@@ -136,10 +135,7 @@ HAL_StatusTypeDef MP4201_Init_Retry(MP4201_Handle_t* dev, I2C_HandleTypeDef* hi2
     // 利用 HAL_GetTick() 进行非阻塞的时间判断
     if (HAL_GetTick() - last_try_time >= delay_ms || last_try_time == 0) {
         last_try_time = HAL_GetTick(); // 更新时间戳
-        current_retry++;
-
         if (MP4201_Init(dev, hi2c) == HAL_OK) {
-            current_retry = 0; // 连接成功后清零状态机，以便未来热插拔恢复
             last_try_time = 0;
             return HAL_OK; // 成功
         }
