@@ -93,7 +93,7 @@ public:
         chassis_cmd_ = cmd;
     }
 
-    // 无线充覆盖是否激活
+    // 无线充覆盖是否激活（由底盘 CAN 命令控制，主机负责取消）
     [[nodiscard]] bool is_wireless_override_active() const {
         return chassis_cmd_.desired_power_limit;
     }

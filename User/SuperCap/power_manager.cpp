@@ -270,7 +270,13 @@ void PowerManager::calibrate_mode() {
 }
 
 void PowerManager::handle_wireless_override() {
-    // 检测 wireless_active 下降沿（离开无线充区）
+    // 退出路径共三条：
+    //   1. wireless_active 下降沿（离开充电区）→ clear_wireless_state()
+    //   2. 充满上升沿（16V→25.5V 循环完成）→ 自动清零 desired_power_limit
+    //   3. 主机主动下发 desired_power_limit = 0（如出发后临时取消）
+    // 若主机下发命令但最终未去充电区，超电侧不做超时处理，由主机负责取消。
+
+    // 检测 wireless_active 下降沿（离开充电区）
     if (!wireless_active && last_wireless_active_) {
         clear_wireless_state();
     }
@@ -284,7 +290,7 @@ void PowerManager::handle_wireless_override() {
     // ─── 以下逻辑仅在覆盖激活时执行 ───
 
     // 1. 覆盖功率限制（由底盘通过 CAN 命令指定，超电内部决定具体功率值）
-    power_limit = 10.0f;
+    power_limit = max_charging_pwr = 5.0f;
 
     // 2. 无线充电模式下放电截止：电容放至 16V 后禁止继续放电
     if (!wireless_discharge_ok_smtrg.state) {
