@@ -51,14 +51,25 @@ void PowerManager::handle() {
         power_limit = max_charging_pwr = power_parameter.chassis_power_limit = 50;
     }
 
-    //    calibrate_info.in_minus_out_minus_cap = in_minus_out_pwr - filtered_cap_pwr.val;
-    // if (my_math::abs(in_minus_out_pwr) > 10) {
-    //        calibrate_info.in_minus_out_over_cap_pwr = in_minus_out_pwr / filtered_cap_pwr.val;
-    // }
-    //    chassis_pwr = referee.power_heat_data_.chassis_power;
+    // 通过设置小功率覆盖裁判系统功率，使电容放电
+    if (wireless_active && chassis_cmd_.desired_power_limit > 0.0f && chassis_cmd_.desired_power_limit < power_limit) {
+        power_limit = chassis_cmd_.desired_power_limit;
+    }
 
     // 状态检查
     check_cap_status();
+    // 若无线充断开，清空所有无线充相关状态
+    if (!wireless_active && last_wireless_active_) {
+        clear_wireless_state();
+    }
+    last_wireless_active_ = wireless_active;
+    // 无线充电循环完成检测：放电→充满（wireless_discharge_ok_smtrg 上升沿）→自动清除 CAN 命令
+    if (wireless_active && chassis_cmd_.desired_power_limit > 0.0f) {
+        if (wireless_discharge_ok_smtrg.state && !last_wireless_discharge_ok_) {
+            chassis_cmd_.desired_power_limit = 0.0f; // 一次充放电循环完成，退出覆盖
+        }
+    }
+    last_wireless_discharge_ok_ = wireless_discharge_ok_smtrg.state;
 
     // 更新跟随趋势 (超前/滞后)
     follow_trend_estimator.update(target_cap_pwr - filtered_cap_pwr.val); // lagging和leading的标准是相对给电容组充电而言
@@ -72,34 +83,19 @@ void PowerManager::handle() {
         else state = IDLE;
     }
 
-    // 执行控制模式 其余两种模式用不到，暂时不考虑
-    // 只在 BUFFER ↔ QUICK_CHARGE 之间参与无线充切换，保护 CALIBRATE/STAND_BY/CUSTOM
-    const bool wireless_switch_allowed = (mode == BUFFER || mode == QUICK_CHARGE);
-    if (wireless_switch_allowed) {
-        if (!wireless_active && last_wireless_active) {
-            exit_quick_charge_mode();
-            mode = BUFFER;
-        } else if (wireless_active && !last_wireless_active) {
-            mode = QUICK_CHARGE;
-        }
-    }
-    last_wireless_active = wireless_active;
-
     switch (mode) {
         case BUFFER:
             buffer_mode();
             break;
-        case QUICK_CHARGE:
-            quick_charge_mode();
-            break;
         case CALIBRATE:
             calibrate_mode();
+            break;
         default:
             break;
     }
 
-    // 错误检测 无线充模式下屏蔽
-    if (mode != QUICK_CHARGE && bbm.v_i < 15.0f) {
+    // 错误检测
+    if (bbm.v_i < 15.0f) {
         err_code |= 4; // 输入欠压
         bbm.stop();
     } else {
@@ -113,6 +109,7 @@ void PowerManager::check_cap_status() {
     cap_limit_60power_smtrg.update(bbm.filtered_v_c.val);
     cap_limit_30power_smtrg.update(bbm.filtered_v_c.val);
     cap_low_smtrg.update(bbm.filtered_v_c.val);
+    wireless_discharge_ok_smtrg.update(bbm.filtered_v_c.val);
 
     // 将施密特触发器状态同步到标志位
     full_charge = cap_full_smtrg.state;   // 电压 ≥ 26V 后置位，≤ 25.5V 复位
@@ -127,6 +124,11 @@ void PowerManager::check_cap_status() {
         under_voltage_tick = 0;
     } else {
         max_releasing_pwr = charge_parameter.allowed_max_releasing_pwr;  // 电压正常：不限制
+    }
+
+    // 无线充电模式下：电容放至 16V 后禁止继续放电，等待 WCM 充回 25.5V
+    if (wireless_active && !wireless_discharge_ok_smtrg.state) {
+        max_releasing_pwr = 0.0f;
     }
 }
 
@@ -260,77 +262,6 @@ void PowerManager::compute_and_apply_target_power() {
     bbm.set_current_loop(bbm.filtered_v_c.val, my_math::limit_abs(target_i, 25.0f));
 }
 
-void PowerManager::quick_charge_mode() {
-    // Quick Charge Mode (无线充电) 目标：
-    //   拓扑：无线充 → MP4201 → 超电(v_c) → BuckBoost → chassis(v_i)
-    //   BuckBoost 始终从超电放电给 chassis，放电量受 120W 无线充容量限制
-
-    // 首次进入：初始化所有控制状态
-    if (!quick_charge_entered) {
-        quick_charge_entered = true;
-        cap_pwr_pid.reset();
-        chassis_pwr_pid.reset();
-        referee_buffer_pid.reset();
-        wireless_recharge_pid.reset();
-        compensation = 0.0f;
-        target_cap_pwr = 0.0f;
-    }
-
-    if (empty) {
-        // 超电耗尽 → 优先给超电充电
-        bbm.stop();
-        cap_pwr_pid.reset();
-        chassis_pwr_pid.reset();
-        bbm.set_current_loop(bbm.v_c, 0.0f);
-    } else {
-        // 有电就放电给 chassis
-        bbm.start();
-    }
-
-    // 阶段3：向电池/轮电机反向充电（仅在 DC/DC 运行时执行）
-    if (bbm.is_working()) {
-        compute_wireless_output();
-    }
-}
-
-void PowerManager::exit_quick_charge_mode() {
-    quick_charge_entered = false;
-
-    cap_pwr_pid.reset();
-    chassis_pwr_pid.reset();
-    referee_buffer_pid.reset();
-    wireless_recharge_pid.reset();
-    follow_trend_estimator.reset();
-
-    compensation = 0.0f;
-    target_cap_pwr = 0.0f;
-
-    bbm.set_current_loop(bbm.filtered_v_c.val, 0.0f);
-}
-
-void PowerManager::compute_wireless_output() {
-    // CV/CC 控制：超电 → BuckBoost → chassis
-    //   CV (恒压)：电压环 PID 输出 I_ref < 电流上限 → 恒压 26V 输出
-    //   CC (恒流)：负载过重，电压下跌，电压环拉满 I_ref 撞限幅墙 → 恒流输出
-
-    // 电流上限 = min(120W / v_c, 硬件最大电流)
-    const float wr_power_budget = WR_PWR_LIMIT;
-    float max_i = wr_power_budget / bbm.filtered_v_i.val;
-    if (max_i > WR_CHARGE_MAX_CURRENT) {max_i = WR_CHARGE_MAX_CURRENT;}
-
-    // 电压外环：ref = 26V, fdb = v_i
-    //   v_i < 26V → error > 0 → PID 正输出 → 需要从超电放更多电
-    //   v_i ≈ 26V → error ≈ 0 → 恒压维持
-    float i_ref = wireless_recharge_pid.update(WR_CHARGE_TARGET_VOLTAGE, bbm.filtered_v_i.val);
-
-    // CC 限幅：I_ref 撞到限幅墙 → 退化为恒流
-    // 钳位到 [0, max_i]（不允许反向充电）
-    i_ref = my_math::limit(i_ref, 0.0f, max_i);
-
-    // 下发电流环：取反为放电方向（超电电流流出为负）
-    bbm.set_current_loop(bbm.filtered_v_c.val, -i_ref);
-}
-
 void PowerManager::calibrate_mode() {
     if (cali_estimator.calibrate_step != Calibrator::I_CAP_STEP_LOAD) {
         bbm.stop();
@@ -355,4 +286,10 @@ void PowerManager::calibrate_mode() {
         //        mode = BUFFER;
         mode = STAND_BY;
     }
+}
+
+void PowerManager::clear_wireless_state() {
+    chassis_cmd_.desired_power_limit = 0.0f;
+    wireless_discharge_ok_smtrg.state = true; // 复位为"允许放电"初始状态
+    last_wireless_discharge_ok_ = true;
 }
