@@ -88,13 +88,18 @@ public:
 
     bool wireless_active = false; // 由 WirelessChargeManager 设置
 
-    // CAN 命令接口：底盘请求功率覆盖（一次性触发，充满后自动退出）
+    // CAN 命令接口：底盘请求进入无线充覆盖模式
     void set_chassis_cmd(const ChassisCmd& cmd) {
         chassis_cmd_ = cmd;
     }
 
+    // 无线充覆盖是否激活
+    [[nodiscard]] bool is_wireless_override_active() const {
+        return chassis_cmd_.desired_power_limit;
+    }
+
     // 获取压缩后的状态码
-    uint8_t get_mode_and_state() const { return mode << 4 | state; }
+    [[nodiscard]] uint8_t get_mode_and_state() const { return mode << 4 | state; }
 
     // 功率滤波器
     LowPassFilter filtered_out_pwr = LowPassFilter(0, 0.05);
@@ -110,10 +115,11 @@ private:
 
     // CAN 命令
     ChassisCmd chassis_cmd_{};
-    // 用于检测 wireless_discharge_ok_smtrg 上升沿（放电→充满完成时自动退出）
-    bool last_wireless_discharge_ok_ = true;
     // 用于检测 wireless_active 下降沿（离开无线充区时清空无线相关状态）
     bool last_wireless_active_ = false;
+
+    // 无线充覆盖：检测 wireless_discharge_ok_smtrg 上升沿（充满时自动退出覆盖）
+    bool last_wireless_discharge_ok_ = true;
 
     // 用于状态判断的迟滞比较
     SchmittTrigger<float> cap_full_smtrg{ charge_parameter.full_charge_upper_threshold,
@@ -132,7 +138,8 @@ private:
     void buffer_mode();
     void compute_buffer_compensation();
     void compute_and_apply_target_power();
-    void clear_wireless_state();   // wireless_active 下降沿时调用，清空所有无线充相关状态
+    void handle_wireless_override(); // 无线充覆盖逻辑（功率限制、放电截止、自动退出）
+    void clear_wireless_state();     // wireless_active 下降沿时调用，清空所有无线充相关状态
     void calibrate_mode();
     void check_cap_status();
 };
