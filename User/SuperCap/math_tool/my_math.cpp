@@ -31,17 +31,6 @@ void PID::reset() {
     output = 0;
 }
 
-
-float my_math::limit(float value, float min, float max) {
-    if (value > max) {
-        return max;
-    } else if (value < min) {
-        return min;
-    } else {
-        return value;
-    }
-}
-
 float my_math::limit_abs(float value, float max) {
     if (value > max) {
         return max;

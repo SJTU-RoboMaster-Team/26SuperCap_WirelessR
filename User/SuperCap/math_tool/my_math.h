@@ -65,7 +65,16 @@ private:
 };
 
 namespace my_math {
-    float limit(float value, float min, float max);
+    template<typename T>
+    T limit(T value, T min, T max) {
+        if (value > max) {
+            return max;
+        } else if (value < min) {
+            return min;
+        } else {
+            return value;
+        }
+    }
 
     float limit_abs(float value, float max);
 
