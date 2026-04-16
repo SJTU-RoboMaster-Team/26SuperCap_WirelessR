@@ -67,7 +67,7 @@ int32_t RefereeComm::unpack_one_pack(uint8_t *data, uint32_t size) {
 //        power_parameter.chassis_power = power_heat_data_.chassis_power;
 //        power_parameter.chassis_voltage = power_heat_data_.chassis_voltage;
 //        power_parameter.chassis_current = power_heat_data_.chassis_current;
-        power_parameter.buffer_energy = power_heat_data_.buffer_energy;
+        power_parameter.buffer_energy = my_math::limit(power_heat_data_.buffer_energy,(uint16_t)0,(uint16_t)60);
     } else if (frame.cmd_id == ROBOT_POS_ID) {
         memcpy(&robot_pos_, frame.data, frame.data_len);
     } else if (frame.cmd_id == BUFF_ID) {
