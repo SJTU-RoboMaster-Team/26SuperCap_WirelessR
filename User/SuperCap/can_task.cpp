@@ -23,7 +23,7 @@ void HAL_FDCAN_RxFifo0Callback(FDCAN_HandleTypeDef *hfdcan, uint32_t RxFifo0ITs)
 void CAN_send_msg(const uint8_t *data, uint32_t len) {
     FDCAN_TxHeaderTypeDef TxHeader;
     static uint8_t TxData[8];
-    for (int i = 0; i < len; ++i) {
+    for (uint32_t i = 0; i < len; ++i) {
         TxData[i] = data[i];
     }
 

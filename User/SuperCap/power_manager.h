@@ -13,10 +13,10 @@
 class PowerManager {
 public:
     PowerManager(BuckBoostManager& bbm, PID& cap_pwr_pid, PID& chassis_pwr_pid, PID& referee_buffer_pid):
-        bbm(bbm),
         cap_pwr_pid(cap_pwr_pid),
         chassis_pwr_pid(chassis_pwr_pid),
-        referee_buffer_pid(referee_buffer_pid) {};
+        referee_buffer_pid(referee_buffer_pid),
+        bbm(bbm){};
 
     void start() { bbm.start(); }
 

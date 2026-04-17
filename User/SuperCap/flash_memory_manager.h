@@ -134,7 +134,7 @@ public:
     // size must be multiple of 8, or n * 64 bits
     // because we use double word to write
     static bool judge_if_empty(const uint32_t *data, uint32_t size) {
-        for (int i = 0; i < size*2; i++) {
+        for (uint32_t i = 0; i < size*2; i++) {
             if (data[i] != 0xFFFFFFFF) {
                 return false;
             }
