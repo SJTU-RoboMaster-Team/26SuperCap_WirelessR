@@ -143,50 +143,50 @@ int main(void)
     /*-------------------------------------------------*/
     /*                   SuperCap 配置                  */
     /*-------------------------------------------------*/
-    // HAL_Delay(200);
+    HAL_Delay(200);
     // HAL_IWDG_Refresh(&hiwdg);
-    //
-    // HAL_Delay(100);
+
+    HAL_Delay(100);
     // HAL_IWDG_Refresh(&hiwdg);
-    //
-    // HAL_OPAMP_SelfCalibrate(&hopamp1);
-    // HAL_OPAMP_Start(&hopamp1);
-    // HAL_OPAMP_SelfCalibrate(&hopamp2);
-    // HAL_OPAMP_Start(&hopamp2);
-    //
-    // HAL_UARTEx_ReceiveToIdle_DMA(&USART_HANDLER_REFEREE, uart3_rx_buf, sizeof (uart3_rx_buf));
-    //
-    // CAN_filter_config(&FDCAN_HANDLER);
-    // HAL_FDCAN_Start(&FDCAN_HANDLER);
-    //
-    // HAL_ADCEx_Calibration_Start(&hadc1,ADC_SINGLE_ENDED);
-    // HAL_ADCEx_Calibration_Start(&hadc2,ADC_SINGLE_ENDED);
-    // HAL_ADCEx_Calibration_Start(&hadc3,ADC_SINGLE_ENDED);
-    // HAL_ADCEx_Calibration_Start(&hadc4,ADC_SINGLE_ENDED);
-    // HAL_ADCEx_Calibration_Start(&hadc5,ADC_SINGLE_ENDED);
-    // // HAL_IWDG_Refresh(&hiwdg);
-    //
-    // HAL_Delay(50);
-    //
-    // HAL_ADC_Start_DMA(&hadc1, (uint32_t *)adc1_buf, 8);
-    // HAL_ADC_Start_DMA(&hadc2, (uint32_t *)adc2_buf, 8);
-    // HAL_ADC_Start_DMA(&hadc3, (uint32_t *)adc3_buf, 8);
-    // HAL_ADC_Start_DMA(&hadc4, (uint32_t *)adc4_buf, 8);
-    // HAL_ADC_Start_DMA(&hadc5, (uint32_t *)adc5_buf, 8);
-    // // HAL_IWDG_Refresh(&hiwdg);
-    //
-    // HAL_HRTIM_SoftwareUpdate(&HRTIMER_HANDLER_BBM, HRTIM_TIMERUPDATE_MASTER | HRTIM_TIMERUPDATE_B | HRTIM_TIMERUPDATE_C);
-    // HAL_HRTIM_WaveformCountStart(&HRTIMER_HANDLER_BBM, HRTIM_TIMERID_MASTER | HRTIM_TIMERID_TIMER_B | HRTIM_TIMERID_TIMER_C);
-    // HAL_HRTIM_SimpleBaseStart_IT(&HRTIMER_HANDLER_BBM,HRTIM_TIMERINDEX_MASTER);
-    // HAL_Delay(5);
-    // HAL_HRTIM_WaveformOutputStart(&HRTIMER_HANDLER_BBM, HRTIM_OUTPUT_TB1 | HRTIM_OUTPUT_TB2 | HRTIM_OUTPUT_TC1 | HRTIM_OUTPUT_TC2);
-    // // HAL_TIM_Base_Start_IT(&TIMER_HANDLER_BUZZ_PWM); // 中断疑似没用
-    // HAL_TIM_Base_Start(&TIMER_HANDLER_BUZZ_PWM);
-    // HAL_TIM_PWM_Start_IT(&TIMER_HANDLER_BUZZ_PWM, TIMER_CHANNEL_BUZZ_PWM);
-    // // HAL_IWDG_Refresh(&hiwdg); // TODO:移植看门狗
-    //
-    // HAL_TIM_Base_Start_IT(&TIMER_HANDLER_CAN_CTRL_LOOP);
-    // HAL_TIM_Base_Start_IT(&TIMER_HANDLER_BUZZ_WS2812_CTRL_LOOP);
+
+    HAL_OPAMP_SelfCalibrate(&hopamp1);
+    HAL_OPAMP_Start(&hopamp1);
+    HAL_OPAMP_SelfCalibrate(&hopamp2);
+    HAL_OPAMP_Start(&hopamp2);
+
+    HAL_UARTEx_ReceiveToIdle_DMA(&USART_HANDLER_REFEREE, uart3_rx_buf, sizeof (uart3_rx_buf));
+
+    CAN_filter_config(&FDCAN_HANDLER);
+    HAL_FDCAN_Start(&FDCAN_HANDLER);
+
+    HAL_ADCEx_Calibration_Start(&hadc1,ADC_SINGLE_ENDED);
+    HAL_ADCEx_Calibration_Start(&hadc2,ADC_SINGLE_ENDED);
+    HAL_ADCEx_Calibration_Start(&hadc3,ADC_SINGLE_ENDED);
+    HAL_ADCEx_Calibration_Start(&hadc4,ADC_SINGLE_ENDED);
+    HAL_ADCEx_Calibration_Start(&hadc5,ADC_SINGLE_ENDED);
+    // HAL_IWDG_Refresh(&hiwdg);
+
+    HAL_Delay(50);
+
+    HAL_ADC_Start_DMA(&hadc1, (uint32_t *)adc1_buf, 8);
+    HAL_ADC_Start_DMA(&hadc2, (uint32_t *)adc2_buf, 8);
+    HAL_ADC_Start_DMA(&hadc3, (uint32_t *)adc3_buf, 8);
+    HAL_ADC_Start_DMA(&hadc4, (uint32_t *)adc4_buf, 8);
+    HAL_ADC_Start_DMA(&hadc5, (uint32_t *)adc5_buf, 8);
+    // HAL_IWDG_Refresh(&hiwdg);
+
+    HAL_HRTIM_SoftwareUpdate(&HRTIMER_HANDLER_BBM, HRTIM_TIMERUPDATE_MASTER | HRTIM_TIMERUPDATE_B | HRTIM_TIMERUPDATE_C);
+    HAL_HRTIM_WaveformCountStart(&HRTIMER_HANDLER_BBM, HRTIM_TIMERID_MASTER | HRTIM_TIMERID_TIMER_B | HRTIM_TIMERID_TIMER_C);
+    HAL_HRTIM_SimpleBaseStart_IT(&HRTIMER_HANDLER_BBM,HRTIM_TIMERINDEX_MASTER);
+    HAL_Delay(5);
+    HAL_HRTIM_WaveformOutputStart(&HRTIMER_HANDLER_BBM, HRTIM_OUTPUT_TB1 | HRTIM_OUTPUT_TB2 | HRTIM_OUTPUT_TC1 | HRTIM_OUTPUT_TC2);
+    // HAL_TIM_Base_Start_IT(&TIMER_HANDLER_BUZZ_PWM); // 中断疑似没用
+    HAL_TIM_Base_Start(&TIMER_HANDLER_BUZZ_PWM);
+    HAL_TIM_PWM_Start_IT(&TIMER_HANDLER_BUZZ_PWM, TIMER_CHANNEL_BUZZ_PWM);
+    // HAL_IWDG_Refresh(&hiwdg); // TODO:移植看门狗
+
+    HAL_TIM_Base_Start_IT(&TIMER_HANDLER_CAN_CTRL_LOOP);
+    HAL_TIM_Base_Start_IT(&TIMER_HANDLER_BUZZ_WS2812_CTRL_LOOP);
 
   /* USER CODE END 2 */
 
@@ -258,7 +258,7 @@ static HAL_StatusTypeDef MP4201_ApplyRuntimeConfig(void) {
 
     HAL_StatusTypeDef ifConfigMaximumSuccess = MP4201_ConfigureMaximum(&mp4201_dev, WR_MAX_VOUT, WR_MAX_IOUT);
 
-    HAL_StatusTypeDef ifConfigWRInput = MP4201_ConfigWirelessInput(&mp4201_dev, WR_MIN_VIN);
+    HAL_StatusTypeDef ifConfigWRInputSuccess = MP4201_ConfigWirelessInput(&mp4201_dev, WR_MIN_VIN);
 
 #if WR_MODE == 1
     MP4201_SetCP_Target(&mp4201_dev, WR_CP_TARGET, WR_CP_PI_KP, WR_CP_PI_KI);
@@ -272,7 +272,7 @@ static HAL_StatusTypeDef MP4201_ApplyRuntimeConfig(void) {
     //  不在此处 Enable MP4201。输出的使能由 WirelessChargeManager 根据
     //  vin schmitt 判断后统一管理，避免无线充未就位时 MP4201 被错误开启。
     mp4201_dev.state = MP4201_STATE_IDLE;
-    if (ifConfigBasicSuccess | ifConfigMaximumSuccess | ifConfigWRInput) { return HAL_ERROR; }
+    if (ifConfigBasicSuccess | ifConfigMaximumSuccess | ifConfigWRInputSuccess) { return HAL_ERROR; }
     return HAL_OK;
 }
 
