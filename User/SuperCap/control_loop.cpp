@@ -16,10 +16,11 @@
 #include "referee_comm.h"
 #include "types.h"
 #include "ws2812/ws2812.h"
-#include <cstdio>
 #include "../callback.h"
 #include "adc_sample.h"
 #include "../config.h"
+#include "../WirelessR/Inc/wireless_charge_manager.h"
+
 static uint32_t tick_40us;
 
 extern HalfBridge left, right;
@@ -44,10 +45,10 @@ PID cap_pwr_pid(0.0003, 0, 0.05, 0, 0.05);
 PID chassis_pwr_pid(0.008, 0, 0.01, 0, 10);
 // PID referee_buffer_pid(1.5f, 0.0007, 0.00, 10.0f/0.0007f, 150);
 PID referee_buffer_pid(1.5f, 0.0002, 0.01, 10000.0f, 150);
-
+PID wireless_recharge_pid(0.005f, 0.0001f,0.05f,0.0f,WR_CHARGE_MAX_CURRENT);
 
 BuckBoostManager bbm(left, right, vout_pid, iout_pid);
-PowerManager pm(bbm, cap_pwr_pid, chassis_pwr_pid, referee_buffer_pid);
+PowerManager pm(bbm, cap_pwr_pid, chassis_pwr_pid, referee_buffer_pid,wireless_recharge_pid);
 
 FlashMemoryManager flash;
 
@@ -81,7 +82,7 @@ void CAN_control_loop() {
  so loop_flag is written in end of bbm.handle()
  when referee disconnected, loop_flag is set true to keep program on
 */
-float set_voltage = 10; // for debug purpose
+float set_voltage = 6; // for debug purpose
 void main_control_loop() {
     static uint32_t loop_cnt = 0;
     loop_cnt++;

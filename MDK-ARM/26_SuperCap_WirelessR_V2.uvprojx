@@ -694,6 +694,11 @@
               <FileType>8</FileType>
               <FilePath>..\User\WirelessR\Src\MP4201.cpp</FilePath>
             </File>
+            <File>
+              <FileName>wireless_charge_manager.cpp</FileName>
+              <FileType>8</FileType>
+              <FilePath>..\User\WirelessR\Src\wireless_charge_manager.cpp</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>

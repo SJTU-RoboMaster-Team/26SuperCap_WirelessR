@@ -7,7 +7,7 @@
 #include "calibrator_estimator.h"
 #include "adc_sample.h"
 #include "can_task.h"
-
+#include "../config.h"
 extern ADC_Buffer adc_buffer;
 extern RefereeComm referee;
 extern Calibrator cali_estimator;
@@ -51,14 +51,11 @@ void PowerManager::handle() {
         power_limit = max_charging_pwr = power_parameter.chassis_power_limit = 50;
     }
 
-    //    calibrate_info.in_minus_out_minus_cap = in_minus_out_pwr - filtered_cap_pwr.val;
-    // if (my_math::abs(in_minus_out_pwr) > 10) {
-    //        calibrate_info.in_minus_out_over_cap_pwr = in_minus_out_pwr / filtered_cap_pwr.val;
-    // }
-    //    chassis_pwr = referee.power_heat_data_.chassis_power;
-
     // 状态检查
     check_cap_status();
+
+    // 无线充覆盖逻辑（功率限制、放电截止、自动退出、断联清空）
+    handle_wireless_override();
 
     // 更新跟随趋势 (超前/滞后)
     follow_trend_estimator.update(target_cap_pwr - filtered_cap_pwr.val); // lagging和leading的标准是相对给电容组充电而言
@@ -72,13 +69,9 @@ void PowerManager::handle() {
         else state = IDLE;
     }
 
-    // 执行控制模式
     switch (mode) {
         case BUFFER:
             buffer_mode();
-            break;
-        case QUICK_CHARGE:
-            // TODO: 实现快充逻辑
             break;
         case CALIBRATE:
             calibrate_mode();
@@ -102,6 +95,7 @@ void PowerManager::check_cap_status() {
     cap_limit_60power_smtrg.update(bbm.filtered_v_c.val);
     cap_limit_30power_smtrg.update(bbm.filtered_v_c.val);
     cap_low_smtrg.update(bbm.filtered_v_c.val);
+    wireless_discharge_ok_smtrg.update(bbm.filtered_v_c.val);
 
     // 将施密特触发器状态同步到标志位
     full_charge = cap_full_smtrg.state;   // 电压 ≥ 26V 后置位，≤ 25.5V 复位
@@ -121,8 +115,8 @@ void PowerManager::check_cap_status() {
     }
 }
 
-void PowerManager::buffer_mode() {
     // Buffer Mode 目标：
+void PowerManager::buffer_mode() {
     //   底盘实际功率 ≤ 裁判系统功率上限
     //   利用超级电容吸收/释放功率差额，维护 buffer 能量在安全水位
 
@@ -275,4 +269,45 @@ void PowerManager::calibrate_mode() {
         //        mode = BUFFER;
         mode = STAND_BY;
     }
+}
+
+void PowerManager::handle_wireless_override() {
+    // 退出路径共三条：
+    //   1. wireless_active 下降沿（离开充电区）→ clear_wireless_state()
+    //   2. 充满上升沿（16V→25.5V 循环完成）→ 自动清零 desired_power_limit
+    //   3. 主机主动下发 desired_power_limit = 0（如出发后临时取消）
+    // 若主机下发命令但最终未去充电区，超电侧不做超时处理，由主机负责取消。
+
+    // 检测 wireless_active 下降沿（离开充电区）
+    if (!wireless_active && last_wireless_active_) {
+        clear_wireless_state();
+    }
+    last_wireless_active_ = wireless_active;
+
+    // 若未激活覆盖，恢复正常功率限制
+    if (!is_wireless_override_active()) {
+        return;
+    }
+
+    // ─── 以下逻辑仅在覆盖激活时执行 ───
+
+    // 1. 覆盖功率限制（由底盘通过 CAN 命令指定，超电内部决定具体功率值）
+    power_limit = max_charging_pwr = 5.0f;
+
+    // 2. 无线充电模式下放电截止：电容放至 16V 后禁止继续放电
+    if (!wireless_discharge_ok_smtrg.state) {
+        max_releasing_pwr = 0.0f;
+    }
+
+    // 3. 检测 wireless_discharge_ok_smtrg 上升沿（充满时自动退出覆盖）
+    if (wireless_discharge_ok_smtrg.state && !last_wireless_discharge_ok_) {
+        chassis_cmd_.desired_power_limit = 0; // 一次充放电循环完成，清除标志位，退出覆盖
+    }
+    last_wireless_discharge_ok_ = wireless_discharge_ok_smtrg.state;
+}
+
+void PowerManager::clear_wireless_state() {
+    chassis_cmd_.desired_power_limit = 0;
+    wireless_discharge_ok_smtrg.state = true; // 复位为"允许放电"初始状态
+    last_wireless_discharge_ok_ = true;
 }

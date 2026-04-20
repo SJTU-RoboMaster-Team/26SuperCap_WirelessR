@@ -147,11 +147,12 @@ typedef struct {
     // --- 错误计数 ---
     uint32_t errorCount;
     uint8_t err_status[2];
-
+    uint32_t lost_connection_tick;
     // --- 无线充电 ---
     uint8_t wpt_switch_flag_;
 
-    uint8_t is_connected;
+    volatile uint8_t is_connected;
+    volatile uint8_t needs_i2c_recovery;
 } MP4201_Handle_t;
 
 /* ==============================================================================
@@ -159,7 +160,7 @@ typedef struct {
  * ============================================================================== */
 
 // 初始化
-    HAL_StatusTypeDef MP4201_ConfigBasic(MP4201_Handle_t* dev);
+HAL_StatusTypeDef MP4201_ConfigBasic(MP4201_Handle_t* dev);
 HAL_StatusTypeDef MP4201_Init(MP4201_Handle_t* dev, I2C_HandleTypeDef* hi2c);
 HAL_StatusTypeDef MP4201_ConfigureMaximum(MP4201_Handle_t* dev, float maxVout, float maxIout);
 HAL_StatusTypeDef MP4201_Init_Retry(MP4201_Handle_t* dev, I2C_HandleTypeDef* hi2c, uint8_t retries, uint32_t delay_ms);

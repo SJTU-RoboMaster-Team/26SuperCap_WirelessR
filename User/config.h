@@ -37,7 +37,7 @@
 #define GPIO_PIN_EN_4201                    GPIO_PIN_13
 
 // WR_Parameters
-#define WR_MODE                             0 // 0:CV MODE 1:CP MODE
+#define WR_MODE                             1 // 0:CV MODE 1:CP MODE
 #define WR_MAX_VOUT                         26.f
 #define WR_MAX_IOUT                         5.8f
 #define WR_CP_TARGET                        120
@@ -45,4 +45,16 @@
 #define WR_CP_PI_KI                         1e-3
 #define WR_CV_TARGET                        6.f
 #define WR_MIN_VIN                          15.f
+
+// WR_Charge_Manager_Parameters
+#define WR_PWR_LIMIT                        120.0f // 无线充最大功率
+#define WR_CHARGE_VIN_UPPER_THRESHOLD       15.0f  // 无线充激活上阈值 (V)
+#define WR_CHARGE_VIN_LOWER_THRESHOLD       12.0f  // 无线充退出下阈值 (V)
+#define WR_CHARGE_TARGET_VOLTAGE            26.0f  // 无线充模式下超电目标电压 (V)
+#define WR_CHARGE_MAX_CURRENT               5.8f   // 无线充最大充电电流 (A)
+#define WR_CHARGE_ENERGY_PER_BONUS          1.0f   // 每 N(J) 能量差触发一次 bonus
+#define WR_CHARGE_BONUS_PER_JOULE           8      // 每次 bonus 增加的底盘能量
+// main_control_loop 被 HRTIM master 以 25kHz 触发，wcm.handle() 与之同频
+#define MAIN_CONTROL_LOOP_FREQ_HZ           25000.0f
+#define WR_CHARGE_LOOP_DT                   (1.0f / MAIN_CONTROL_LOOP_FREQ_HZ)
 #endif //INC_26_SUPERCAP_WIRELESSR_V2_CONFIG_H
