@@ -54,7 +54,12 @@ HAL_StatusTypeDef MP4201_Init(MP4201_Handle_t* dev, I2C_HandleTypeDef* hi2c) {
     dev->wpt_switch_flag_ = false;
     dev->is_connected = false;
     dev->needs_i2c_recovery = false;
-    dev->lost_connection_tick =0;
+    dev->lost_connection_tick = 0;
+    dev->vin_meas = 0;
+    dev->iin_meas = 0;
+    dev->vout_meas  = 0;
+    dev->iout_meas  = 0;
+    dev->power_meas  = 0;
 
     // 初始化 PI
     dev->pi.Kp = 0.0f;
@@ -191,7 +196,7 @@ HAL_StatusTypeDef MP4201_Enable(MP4201_Handle_t* dev, uint8_t enable) {
                                                  I2C_MEMADD_SIZE_8BIT,
                                                  &data,
                                                  1,
-                                                 100);
+                                                 10);
     if (status != HAL_OK) {
         MP4201_MarkDisconnected(dev);
     }
@@ -405,7 +410,7 @@ static void MP4201_RunControlAlgorithm(MP4201_Handle_t* dev) {
         // --- 施密特触发器 (Schmitt Trigger) ---
         // 用于判断是否即将充满（进入 CV 阶段），避免在临界点反复跳变。
         // 逻辑：
-        // - 当电压差 < 0.1V (非常接近满电) -> 进入 CV 锁定状态 (State = 1)
+        // - 当电压差 < 0.02V (非常接近满电) -> 进入 CV 锁定状态 (State = 1)
         // - 当电压差 > 2.0V (电压掉下来了) -> 回到 CP 调节状态 (State = 0)
         if (schmitt_trigger_CV_phase == 0 && fabs(dev->vout_meas - dev->maxVout) < 0.02f) {
             schmitt_trigger_CV_phase = 1; // 进入 CV 临界区

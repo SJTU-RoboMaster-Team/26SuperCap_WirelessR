@@ -60,7 +60,7 @@ public:
     bool first_;
 
     // 内部编码相关变量
-    WPTMsg wpt_msg_;
+    WPTMsg wpt_msg_ {};
     uint16_t encoder_data_ = 0;
     uint8_t parity_ = 0;
 
