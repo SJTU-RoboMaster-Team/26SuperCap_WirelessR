@@ -54,8 +54,8 @@ void WirelessChargeManager::exit_wireless_mode() {
     // 关闭 MP4201
     MP4201_Enable(&mp4201_, 0);
 
-    // 停止负载调制器
-    modulator_.stop();
+    // 不停止负载调制器
+    // modulator_.stop();
 
     // 不清零energy_accounting
 }
