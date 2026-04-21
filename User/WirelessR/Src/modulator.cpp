@@ -68,11 +68,12 @@ void Modulator::handle() {
      * 基带速率 2kbps，即 1个 Bit 周期为 500us
      * handle() 以 4kHz 运行，即每 250us 触发一次 (代表半个 Bit 周期)
      */
-
+    static bool last_pin_state = GPIO_PIN_SET;
     if (half_bit_ == 0) {
         // [阶段 1: 位的开始 (0ms)]
         // 在每一位的开始，必须翻转一次电平
-        HAL_GPIO_TogglePin(MOD_GPIO_PORT, MOD_PIN);
+        HAL_GPIO_WritePin(MOD_GPIO_PORT, MOD_PIN, (GPIO_PinState)!last_pin_state);
+        last_pin_state = !last_pin_state;
         half_bit_ = 1;
     } else {
         // [阶段 2: 位的中间 (250us)]
@@ -80,7 +81,8 @@ void Modulator::handle() {
 
         if (current_bit == 1) {
             // 如果数据位是 '1'，位中间再翻转一次
-            HAL_GPIO_TogglePin(MOD_GPIO_PORT, MOD_PIN);
+            HAL_GPIO_WritePin(MOD_GPIO_PORT, MOD_PIN, (GPIO_PinState)!last_pin_state);
+            last_pin_state = !last_pin_state;
         }
         // 如果数据位是 '0'，位中间保持原电平，不做翻转动作
 

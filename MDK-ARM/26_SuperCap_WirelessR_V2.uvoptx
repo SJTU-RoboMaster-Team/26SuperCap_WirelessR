@@ -163,32 +163,22 @@
         <Ww>
           <count>1</count>
           <WinNumber>1</WinNumber>
-          <ItemText>current_retry</ItemText>
+          <ItemText>bbm</ItemText>
         </Ww>
         <Ww>
           <count>2</count>
           <WinNumber>1</WinNumber>
-          <ItemText>feedForwardDebug</ItemText>
+          <ItemText>set_voltage</ItemText>
         </Ww>
         <Ww>
           <count>3</count>
           <WinNumber>1</WinNumber>
-          <ItemText>bbm</ItemText>
+          <ItemText>load_modulator</ItemText>
         </Ww>
         <Ww>
           <count>4</count>
           <WinNumber>1</WinNumber>
-          <ItemText>set_voltage</ItemText>
-        </Ww>
-        <Ww>
-          <count>5</count>
-          <WinNumber>1</WinNumber>
-          <ItemText>modulator_state_</ItemText>
-        </Ww>
-        <Ww>
-          <count>6</count>
-          <WinNumber>1</WinNumber>
-          <ItemText>hi2c1</ItemText>
+          <ItemText>\\26_SuperCap_WirelessR_V2\../User/callback.cpp\load_modulator.modulator_state_</ItemText>
         </Ww>
       </WatchWindow1>
       <WatchWindow2>

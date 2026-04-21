@@ -62,7 +62,12 @@ LED led = LED(&ws2812);
 
 extern RefereeComm referee;
 
+extern MP4201_Handle_t mp4201_dev;
+extern Modulator load_modulator;
+
 CapMsg msg;
+
+WirelessChargeManager wcm(mp4201_dev, pm, load_modulator);
 
 extern RefreshFlag refresh_flag;
 // this loop will be run at 100 Hz
@@ -84,7 +89,8 @@ void CAN_control_loop() {
 */
 float set_voltage = 6; // for debug purpose
 void main_control_loop() {
-    static uint32_t loop_cnt = 0;
+
+    static uint16_t loop_cnt = 0;
     loop_cnt++;
 
     static bool first = true;
@@ -148,15 +154,6 @@ void main_control_loop() {
         pm.err_code &= ~2;
     }
 
-    // Warning priority: over-voltage > referee disconnect.
-    if (cap_over_voltage_alarm) {
-        music_player.start_warning(L3);
-    } else if (referee_disconnect_alarm) {
-        music_player.start_warning(H5);
-    } else {
-        music_player.stop_warning();
-    }
-
     // for debug purpose
     //    static bool first = false;
     //    if (!first) {
@@ -169,11 +166,22 @@ void main_control_loop() {
     // for debug purpose
     //    left.handle();
     //    right.handle();
+    wcm.handle();
     pm.handle();
     bbm.handle();
 
     // led 刷新频率不用很快
-    if (loop_cnt % 5000 == 0) {
+    if (loop_cnt == 5000) {
+        loop_cnt = 0;
+        // Warning priority: over-voltage > referee disconnect.
+        if (cap_over_voltage_alarm) {
+            music_player.start_warning(L3);
+        } else if (referee_disconnect_alarm) {
+            music_player.start_warning(H5);
+        } else {
+            music_player.stop_warning();
+        }
+
         switch (pm.state) {
             case PowerManager::CHARGING:
                 led.set_rgb(0, 255, 0);
