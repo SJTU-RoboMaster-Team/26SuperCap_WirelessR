@@ -73,7 +73,7 @@ HAL_StatusTypeDef MP4201_Init(MP4201_Handle_t* dev, I2C_HandleTypeDef* hi2c) {
     }
 
     // 2. 检查设备 (Ping) - 将超时时间从 100ms 缩短到 10ms，提升非阻塞轮询速度
-    if (HAL_I2C_IsDeviceReady(dev->hi2c, dev->devAddr, 3, 10) != HAL_OK) {
+    if (HAL_I2C_IsDeviceReady(dev->hi2c, dev->devAddr, 1, 10) != HAL_OK) {
         MP4201_MarkDisconnected(dev);
         return HAL_ERROR;
     }
