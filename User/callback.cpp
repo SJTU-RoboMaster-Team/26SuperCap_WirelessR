@@ -13,6 +13,8 @@
 #include "callback.h"
 #include "SuperCap/task_manager/timer.h"
 #include "SuperCap/adc_sample.h"
+#include "SuperCap/can_task.h"
+#include "SuperCap/power_manager.h"
 #include "config.h"
 #include "WirelessR/Inc/MP4201.h"
 #include "WirelessR/Inc/timer.h"
@@ -41,6 +43,7 @@ RefereeComm referee;
 
 extern LCDComm lcd_comm;
 extern WS2812 ws2812;
+extern PowerManager pm;
 
 MusicPlayer music_player = MusicPlayer(htim2);
 extern LED led;
@@ -74,6 +77,9 @@ uint8_t refresh_counter;
 MP4201_Handle_t mp4201_dev; // 全局 MP4201 设备句柄
 FreqMeter modulator_loop(1);
 Modulator load_modulator(modulator_loop);
+
+static uint8_t fdcan_rx_data[8];
+static uint8_t fdcan_dlc_to_bytes(uint32_t dlc);
 
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef* htim) {
     if (htim->Instance == TIMER_CAN_CTRL_LOOP) {
@@ -217,5 +223,41 @@ void HAL_I2C_MemTxCpltCallback(I2C_HandleTypeDef* hi2c) {
 void HAL_I2C_ErrorCallback(I2C_HandleTypeDef* hi2c) {
     if (hi2c == mp4201_dev.hi2c) {
         MP4201_OnError(&mp4201_dev);
+    }
+}
+
+void HAL_FDCAN_RxFifo0Callback(FDCAN_HandleTypeDef *hfdcan, uint32_t RxFifo0ITs)
+{
+    if (hfdcan->Instance == FDCAN && (RxFifo0ITs & FDCAN_IT_RX_FIFO0_NEW_MESSAGE) != RESET) {
+        FDCAN_RxHeaderTypeDef rx_header;
+        if (HAL_FDCAN_GetRxMessage(hfdcan, FDCAN_RX_FIFO0, &rx_header, fdcan_rx_data) != HAL_OK) {
+            return;
+        }
+
+        if (rx_header.IdType != FDCAN_STANDARD_ID ||
+            rx_header.RxFrameType != FDCAN_DATA_FRAME ||
+            rx_header.Identifier != 0x102 ||
+            fdcan_dlc_to_bytes(rx_header.DataLength) < sizeof(ChassisCmd)) {
+            return;
+        }
+        // todo: can包id待C板决定
+        ChassisCmd cmd{};
+        cmd.desired_power_limit = fdcan_rx_data[0];
+        pm.set_chassis_cmd(cmd);
+    }
+}
+
+static uint8_t fdcan_dlc_to_bytes(uint32_t dlc) {
+    switch (dlc) {
+    case FDCAN_DLC_BYTES_0:  return 0;
+    case FDCAN_DLC_BYTES_1:  return 1;
+    case FDCAN_DLC_BYTES_2:  return 2;
+    case FDCAN_DLC_BYTES_3:  return 3;
+    case FDCAN_DLC_BYTES_4:  return 4;
+    case FDCAN_DLC_BYTES_5:  return 5;
+    case FDCAN_DLC_BYTES_6:  return 6;
+    case FDCAN_DLC_BYTES_7:  return 7;
+    case FDCAN_DLC_BYTES_8:  return 8;
+    default:                return 0;
     }
 }

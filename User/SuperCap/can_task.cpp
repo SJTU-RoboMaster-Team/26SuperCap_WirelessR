@@ -4,29 +4,10 @@
 #include "../config.h"
 #include "can_task.h"
 #include "../callback.h"
-#include "power_manager.h"
 
 extern FDCAN_HandleTypeDef hfdcan3;
 
-uint8_t CAN1_rx_data[8];
 extern RefreshFlag refresh_flag;
-extern PowerManager pm;
-
-void HAL_FDCAN_RxFifo0Callback(FDCAN_HandleTypeDef *hfdcan, uint32_t RxFifo0ITs) {
-    if (hfdcan->Instance == FDCAN) {
-        if ((RxFifo0ITs & FDCAN_IT_RX_FIFO0_NEW_MESSAGE) != RESET) {
-            FDCAN_RxHeaderTypeDef RxHeader;
-            HAL_FDCAN_GetRxMessage(hfdcan, FDCAN_RX_FIFO0, &RxHeader, CAN1_rx_data);
-
-            if (RxHeader.Identifier == 0x102) {
-                ChassisCmd cmd;
-                memcpy(&cmd, CAN1_rx_data, sizeof(ChassisCmd));
-                pm.set_chassis_cmd(cmd);
-            }
-        }
-    }
-}
-
 
 void CAN_send_msg(const uint8_t *data, uint32_t len) {
     FDCAN_TxHeaderTypeDef TxHeader;
