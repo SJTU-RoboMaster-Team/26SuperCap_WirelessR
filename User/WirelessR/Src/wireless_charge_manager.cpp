@@ -45,7 +45,7 @@ void WirelessChargeManager::enter_wireless_mode() {
     MP4201_SetCP_Target(&mp4201_, 120,0, 0.005);
 
     // 启动负载调制器
-    modulator_.start();
+    // modulator_.start();
 }
 
 void WirelessChargeManager::exit_wireless_mode() {

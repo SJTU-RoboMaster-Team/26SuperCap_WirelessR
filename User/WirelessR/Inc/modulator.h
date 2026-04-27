@@ -34,7 +34,7 @@ public:
         BUSY,
         IDLE,
         LOCK
-    } modulator_state_ = IDLE;
+    } modulator_state_ = BUSY;
 
     enum ModulatorStatus {
         OK,
