@@ -17,7 +17,7 @@ void CAN_send_msg(const uint8_t *data, uint32_t len) {
     }
 
     // TxHeader.Identifier = 0x301; // 25国赛舵轮英雄
-    TxHeader.Identifier = 0x103; // 其他
+    TxHeader.Identifier = CAN_ID_CAP_STATUS; // 其他
     TxHeader.IdType = FDCAN_STANDARD_ID;
     TxHeader.TxFrameType = FDCAN_DATA_FRAME;
     TxHeader.DataLength = FDCAN_DLC_BYTES_8;

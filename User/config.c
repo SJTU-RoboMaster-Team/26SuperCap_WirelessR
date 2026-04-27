@@ -22,8 +22,8 @@ void CAN_filter_config(FDCAN_HandleTypeDef* hfdcan){
     sFilterConfig.FilterIndex = 0;
     sFilterConfig.FilterType = FDCAN_FILTER_RANGE;
     sFilterConfig.FilterConfig = FDCAN_FILTER_TO_RXFIFO0;
-    sFilterConfig.FilterID1 = 0x00000000;
-    sFilterConfig.FilterID2 = 0x000007FF;
+    sFilterConfig.FilterID1 = CAN_ID_CHASSIS_CMD;
+    sFilterConfig.FilterID2 = CAN_ID_CHASSIS_CMD;
     if (HAL_FDCAN_ConfigFilter(hfdcan, &sFilterConfig) != HAL_OK)
     {
         Error_Handler();

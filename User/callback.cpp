@@ -236,7 +236,7 @@ void HAL_FDCAN_RxFifo0Callback(FDCAN_HandleTypeDef *hfdcan, uint32_t RxFifo0ITs)
 
         if (rx_header.IdType != FDCAN_STANDARD_ID ||
             rx_header.RxFrameType != FDCAN_DATA_FRAME ||
-            rx_header.Identifier != 0x102 ||
+            rx_header.Identifier != CAN_ID_CHASSIS_CMD ||
             fdcan_dlc_to_bytes(rx_header.DataLength) < sizeof(ChassisCmd)) {
             return;
         }

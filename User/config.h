@@ -27,6 +27,8 @@
 
 #define FDCAN                               FDCAN3
 #define FDCAN_HANDLER                       hfdcan3
+#define CAN_ID_CHASSIS_CMD                  0x999U
+#define CAN_ID_CAP_STATUS                   0x103U
 
 #define USART_REFEREE                       USART3
 #define USART_HANDLER_REFEREE               huart3
