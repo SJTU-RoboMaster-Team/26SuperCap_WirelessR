@@ -130,8 +130,11 @@ private:
         DATA_LEN_OUTRANGE,
         HEADER_CRC_FAIL,
         ID_UNDEFINED,
+        DATA_LEN_MISMATCH,
         PACK_CRC_FAIL,
     } unpack_error_;
+
+    bool apply_frame(uint16_t cmd_id, const uint8_t *data, uint16_t data_len);
 };
 
 
