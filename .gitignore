@@ -22,7 +22,6 @@ DebugConfig
 *.map
 *.htm
 *.lnp
-*.sct
 *.dep
 *.lst
 *.scvd
