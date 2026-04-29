@@ -184,7 +184,6 @@ void PowerManager::compute_buffer_compensation() {
     else                                     referee_buffer_pid.kp = 1.5f;
 
     // 施密特触发器判断偏差是否超出死区（阈值 3J/7J）
-    // int32_t → uint16_t：负值（buffer不足）溢出为大数，触发"远离目标"状态
     buffer_far_from_target.update(buffer_surplus);
     referee_buffer_pid.update(0.0f, (float)buffer_surplus);
 
