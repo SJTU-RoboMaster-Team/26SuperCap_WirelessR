@@ -44,6 +44,7 @@ extern "C" {
 #define REG_MFR_OVP_CTRL         0xD6
 #define REG_MFR_OCP_CTRL         0XD2
 #define REG_MFR_CTRL1            0xD0
+#define REG_MFR_CTRL3            0xD3
 #define REG_STATUS_WORD          0x79
 /* ==============================================================================
  * 转换系数
@@ -161,6 +162,7 @@ typedef struct {
 
 // 初始化
 HAL_StatusTypeDef MP4201_ConfigBasic(MP4201_Handle_t* dev);
+HAL_StatusTypeDef MP4201_SetMfrCtrl3Bit5(MP4201_Handle_t* dev);
 HAL_StatusTypeDef MP4201_Init(MP4201_Handle_t* dev, I2C_HandleTypeDef* hi2c);
 HAL_StatusTypeDef MP4201_ConfigureMaximum(MP4201_Handle_t* dev, float maxVout, float maxIout);
 HAL_StatusTypeDef MP4201_Init_Retry(MP4201_Handle_t* dev, I2C_HandleTypeDef* hi2c, uint8_t retries, uint32_t delay_ms);

@@ -114,8 +114,36 @@ HAL_StatusTypeDef MP4201_ConfigBasic(MP4201_Handle_t* dev) {
         return HAL_ERROR;
     }
 
+    if (MP4201_SetMfrCtrl3Bit5(dev) != HAL_OK) {
+        MP4201_MarkDisconnected(dev);
+        return HAL_ERROR;
+    }
     // 更新本地状态并返回
     dev->isEnabled = 0;
+
+
+
+    return HAL_OK;
+}
+
+HAL_StatusTypeDef MP4201_SetMfrCtrl3Bit5(MP4201_Handle_t* dev) {
+    if (!dev->is_connected) {
+        return HAL_ERROR;
+    }
+
+    uint8_t ctrl3_val = 0;
+    if (HAL_I2C_Mem_Read(dev->hi2c, dev->devAddr, REG_MFR_CTRL3, I2C_MEMADD_SIZE_8BIT, &ctrl3_val, 1, 100) !=
+        HAL_OK) {
+        MP4201_MarkDisconnected(dev);
+        return HAL_ERROR;
+    }
+
+    ctrl3_val |= (1 << 5);
+    if (HAL_I2C_Mem_Write(dev->hi2c, dev->devAddr, REG_MFR_CTRL3, I2C_MEMADD_SIZE_8BIT, &ctrl3_val, 1, 100) !=
+        HAL_OK) {
+        MP4201_MarkDisconnected(dev);
+        return HAL_ERROR;
+    }
 
     return HAL_OK;
 }
