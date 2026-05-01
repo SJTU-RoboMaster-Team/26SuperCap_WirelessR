@@ -47,7 +47,7 @@ public:
         bit_index_ = 0;
         half_bit_ = 0;
         first_ = true;
-        modulator_state_ = STOP;
+        modulator_state_ = START;
         data_frame_ = 0;
     }
 
