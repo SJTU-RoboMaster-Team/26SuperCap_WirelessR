@@ -7,6 +7,9 @@
   */
 
 #include "../Inc/MP4201.h"
+
+#include <future>
+
 #include "../../config.h"
 #include "stm32g4xx_hal.h"
 
@@ -60,7 +63,10 @@ HAL_StatusTypeDef MP4201_Init(MP4201_Handle_t* dev, I2C_HandleTypeDef* hi2c) {
     dev->vout_meas  = 0;
     dev->iout_meas  = 0;
     dev->power_meas  = 0;
-
+    dev->pending_bit_ = {};
+    dev->tx_in_flight_ = MP4201_TX_NONE;
+    dev->tx_enable_val_ = 0;
+    dev->tx_cp_power = dev->tx_cp_kp = dev->tx_cp_ki = 0.0f;
     // 初始化 PI
     dev->pi.Kp = 0.0f;
     dev->pi.Ki = 0.01f;
@@ -120,8 +126,6 @@ HAL_StatusTypeDef MP4201_ConfigBasic(MP4201_Handle_t* dev) {
     }
     // 更新本地状态并返回
     dev->isEnabled = 0;
-
-
 
     return HAL_OK;
 }
@@ -214,31 +218,28 @@ HAL_StatusTypeDef MP4201_Enable(MP4201_Handle_t* dev, uint8_t enable) {
         return HAL_ERROR;
     }
 
-    uint8_t data = enable ? 0x80 : 0x00;
-    dev->isEnabled = enable;
-    dev->pi.integral_sum = 0.0f;
-
-    HAL_StatusTypeDef status = HAL_I2C_Mem_Write(dev->hi2c,
-                                                 dev->devAddr,
-                                                 REG_OPERATION,
-                                                 I2C_MEMADD_SIZE_8BIT,
-                                                 &data,
-                                                 1,
-                                                 10);
-    if (status != HAL_OK) {
-        MP4201_MarkDisconnected(dev);
-    }
-    return status;
+    dev->pending_bit_.enable_pending = true; // 设置标志位
+    dev->pending_bit_.enable_pending_val = enable;
+    return HAL_OK;
 }
 
 void MP4201_SetCV_Target(MP4201_Handle_t* dev, float voltage) {
-    if (voltage > dev->maxVout)
+    if (voltage > dev->maxVout) {
         voltage = dev->maxVout;
-    dev->controlMode = MP4201_MODE_CV;
-    dev->targetVal = voltage;
+    }
 
     uint16_t iout_reg = (uint16_t)(dev->maxIout * SCALE_ILIM_SET_LSB_INV);
+    uint32_t timeout = HAL_GetTick();
+    while (dev->state != MP4201_STATE_IDLE) {
+        if (HAL_GetTick() - timeout > 10) {
+            break;
+        }
+    }
+    dev->state = MP4201_STATE_WRITE_CTRL;
+    dev->controlMode = MP4201_MODE_CV;
+    dev->targetVal = voltage;
     MP4201_WriteReg_Blocking(dev, REG_IOUT_OC_FAULT_LIMIT, iout_reg);
+    dev->state = MP4201_STATE_IDLE;
 }
 
 void MP4201_SetCC_Target(MP4201_Handle_t* dev, float current) {
@@ -249,6 +250,12 @@ void MP4201_SetCC_Target(MP4201_Handle_t* dev, float current) {
 }
 
 void MP4201_SetCP_Target(MP4201_Handle_t* dev, float power, float Kp, float Ki) {
+    dev->pending_bit_.set_cp_pending = true;
+    dev->pending_bit_.set_cp_pending_power = power;
+    dev->pending_bit_.set_cp_pending_kp = Kp;
+    dev->pending_bit_.set_cp_pending_ki = Ki;
+    return;
+
     dev->controlMode = MP4201_MODE_CP;
     dev->targetVal = power;
     dev->pi.Kp = Kp;
@@ -265,7 +272,9 @@ void MP4201_SetCP_Target(MP4201_Handle_t* dev, float power, float Kp, float Ki) 
     // 2. 先把电压设为 26V (满充电压)
     // 这样 MP4201 会试图输出 26V，然后进入动态调节的 CC 模式
     uint16_t vout_reg = (uint16_t)(dev->maxVout * SCALE_VOUT_SET_LSB_INV);
+    dev->state = MP4201_STATE_WRITE_CTRL;
     MP4201_WriteReg_Blocking(dev, REG_VOUT_COMMAND, vout_reg);
+    dev->state = MP4201_STATE_IDLE;
 }
 
 HAL_StatusTypeDef MP4201_StartDMAUpdate(MP4201_Handle_t* dev) {
@@ -278,6 +287,49 @@ HAL_StatusTypeDef MP4201_StartDMAUpdate(MP4201_Handle_t* dev) {
         return HAL_BUSY;
     }
 
+    if (dev->pending_bit_.enable_pending) {
+        dev->tx_in_flight_ = MP4201_TX_ENABLE;
+        dev->tx_enable_val_ = dev->pending_bit_.enable_pending_val;
+
+        dev->dmaTxBuffer[0] = dev->pending_bit_.enable_pending_val ? 0x80 : 0x00;
+        dev->state = MP4201_STATE_WRITE_CTRL;
+
+        auto status = HAL_I2C_Mem_Write_DMA(dev->hi2c,dev->devAddr,REG_OPERATION,I2C_MEMADD_SIZE_8BIT,dev->dmaTxBuffer,1);
+
+        if (status == HAL_OK) {
+            dev->pending_bit_.enable_pending = 0;
+        }else {
+            dev->tx_in_flight_ = MP4201_TX_NONE;
+            MP4201_MarkDisconnected(dev);
+        }
+        return status;
+    }else if (dev->pending_bit_.set_cp_pending) {
+        dev->tx_in_flight_ = MP4201_TX_SET_CP;
+        dev->tx_cp_power = dev->pending_bit_.set_cp_pending_power;
+        dev->tx_cp_kp = dev->pending_bit_.set_cp_pending_kp;
+        dev->tx_cp_ki = dev->pending_bit_.set_cp_pending_ki;
+
+        // 先把电压设为 26V (满充电压)
+        // 这样 MP4201 会试图输出 26V，然后进入动态调节的 CC 模式
+        uint16_t vout_reg = (uint16_t)(dev->maxVout * SCALE_VOUT_SET_LSB_INV);
+        dev->dmaTxBuffer[0] = vout_reg & 0xFF;
+        dev->dmaTxBuffer[1] = (vout_reg >> 8) & 0xFF;
+        dev->state = MP4201_STATE_WRITE_CTRL;
+        auto status = HAL_I2C_Mem_Write_DMA(dev->hi2c,
+                                            dev->devAddr,
+                                            REG_VOUT_COMMAND,
+                                            I2C_MEMADD_SIZE_8BIT,
+                                            dev->dmaTxBuffer,
+                                            2);
+        if (status == HAL_OK) {
+            dev->pending_bit_.set_cp_pending = 0;
+        } else {
+            dev->tx_in_flight_ = MP4201_TX_NONE;
+            MP4201_MarkDisconnected(dev);
+        }
+        return status;
+    }
+    // 以下状态机仅在配置完成后开始运行
     dev->lastUpdateTime = HAL_GetTick();
     dev->state = MP4201_STATE_READ_VIN; // 先占位
 
@@ -405,7 +457,48 @@ void MP4201_OnRxCplt(MP4201_Handle_t* dev) {
 }
 
 void MP4201_OnTxCplt(MP4201_Handle_t* dev) {
-    dev->state = MP4201_STATE_IDLE;
+    switch (dev->tx_in_flight_) {
+        case MP4201_TX_ENABLE:
+          dev->isEnabled = dev->tx_enable_val_;
+          dev->pi.integral_sum = 0.0f;
+          break;
+
+      case MP4201_TX_SET_CP:
+          dev->controlMode = MP4201_MODE_CP;
+          dev->targetVal = dev->tx_cp_power;
+          dev->pi.Kp = dev->tx_cp_kp;
+          dev->pi.Ki = dev->tx_cp_ki;
+          dev->pi.integral_sum = (dev->iout_meas > 0.1f) ? dev->iout_meas : 0.1f;
+          break;
+
+      case MP4201_TX_CTRL_WRITE:
+      case MP4201_TX_NONE:
+      default:
+          break;
+      }
+
+      dev->tx_in_flight_ = MP4201_TX_NONE;
+      dev->state = MP4201_STATE_IDLE;
+    //
+    // if (dev->pending_bit_.enable_pending) {
+    //     dev->pending_bit_.enable_pending = false;
+    //     dev->isEnabled = dev->pending_bit_.enable_pending_val;
+    //     dev->pi.integral_sum = 0.0f;
+    // }else if (dev->pending_bit_.set_cp_pending) {
+    //     dev->pending_bit_.set_cp_pending = false;
+    //     dev->controlMode = MP4201_MODE_CP;
+    //     dev->targetVal = dev->pending_bit_.set_cp_pending_power;
+    //     dev->pi.Kp = dev->pending_bit_.set_cp_pending_kp;
+    //     dev->pi.Ki = dev->pending_bit_.set_cp_pending_ki;
+    //     // 积分器初始化：从当前实际电流开始积分，实现无扰切换
+    //     if (dev->iout_meas > 0.1f) {
+    //         dev->pi.integral_sum = dev->iout_meas;
+    //     } else {
+    //         // 如果刚启动没电流，给一个初始小电流起步
+    //         dev->pi.integral_sum = 0.1f;
+    //     }
+    // }
+    // dev->state = MP4201_STATE_IDLE;
 }
 
 void MP4201_OnError(MP4201_Handle_t* dev) {

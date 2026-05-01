@@ -105,11 +105,19 @@ typedef struct {
     float out_max;      // 输出上限 (通常等于 maxVout)
     float out_min;      // 输出下限 (通常为 0 或当前电容电压)
 } MP4201_PI_Config_t;
-
+/* ==============================================================================
+ * TX事务类型枚举
+ * ============================================================================== */
+typedef enum {
+    MP4201_TX_NONE = 0,
+    MP4201_TX_ENABLE,
+    MP4201_TX_SET_CP,
+    MP4201_TX_CTRL_WRITE,
+} MP4201_TxType_t;
 /* ==============================================================================
  * 主句柄结构体
  * ============================================================================== */
-typedef struct {
+typedef struct MP4201_HANDLE_T{
     // --- 硬件接口 ---
     I2C_HandleTypeDef* hi2c;
     uint8_t devAddr;
@@ -154,6 +162,20 @@ typedef struct {
 
     volatile uint8_t is_connected;
     volatile uint8_t needs_i2c_recovery;
+
+    volatile MP4201_TxType_t tx_in_flight_;
+    uint8_t tx_enable_val_;
+    float tx_cp_power;
+    float tx_cp_kp;
+    float tx_cp_ki;
+
+    struct {
+        uint8_t enable_pending, enable_pending_val;
+        uint8_t set_cp_pending;
+        float set_cp_pending_power;
+        float set_cp_pending_kp;
+        float set_cp_pending_ki;
+    } pending_bit_;
 } MP4201_Handle_t;
 
 /* ==============================================================================
