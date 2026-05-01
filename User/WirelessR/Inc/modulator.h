@@ -22,8 +22,8 @@
 
 // 整合进来的 WPTMsg 结构体
 struct WPTMsg {
-    uint8_t wpt_power_; // LSB of uint16_t
-    bool switch_flag_;  // on: 0x01, off: 0x00
+    uint8_t wpt_power_ = 0; // LSB of uint16_t
+    bool switch_flag_ = false;  // on: 0x01, off: 0x00
 }__attribute__((packed));
 
 class Modulator {
@@ -47,7 +47,7 @@ public:
         bit_index_ = 0;
         half_bit_ = 0;
         first_ = true;
-        modulator_state_ = START;
+        modulator_state_ = STOP;
         data_frame_ = 0;
     }
 
