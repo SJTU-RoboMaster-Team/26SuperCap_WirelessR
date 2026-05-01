@@ -201,6 +201,7 @@ void PowerManager::compute_buffer_compensation() {
     }
 
     if (is_wireless_override_active()) {
+        compensation -= 100.0f;
         compensation = my_math::limit_max(compensation, 0.0f); // 无线充模式下只允许负补偿促放电，不允许正补偿抵消放电
     }
 }
