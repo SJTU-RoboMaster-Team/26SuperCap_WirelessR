@@ -222,6 +222,11 @@
           <WinNumber>2</WinNumber>
           <ItemText>set_voltage</ItemText>
         </Ww>
+        <Ww>
+          <count>10</count>
+          <WinNumber>2</WinNumber>
+          <ItemText>set_voltage</ItemText>
+        </Ww>
       </WatchWindow2>
       <ScvdPack>
         <Filename>D:\Programs\KEIL_V5\ARM\CMSIS-View\1.2.0\EventRecorder\EventRecorder.scvd</Filename>
