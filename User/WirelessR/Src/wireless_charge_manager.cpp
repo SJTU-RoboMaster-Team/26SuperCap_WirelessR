@@ -34,6 +34,21 @@ void WirelessChargeManager::handle() {
 
     // 5. 同步标志位给 PM
     pm_.wireless_active = wireless_active_;
+
+    if (wireless_active_) {
+        if (pm_.allow_wireless_mp4201_start()) {
+            if (!mp4201_started_) {
+                MP4201_SetCP_Target(&mp4201_, 120, 0, 0.005f);
+                MP4201_Enable(&mp4201_, 1);
+                mp4201_started_ = true;
+            }
+        } else {
+            if (mp4201_started_) {
+                MP4201_Enable(&mp4201_, 0);
+                mp4201_started_ = false;
+            }
+        }
+    }
 }
 
 void WirelessChargeManager::enter_wireless_mode() {
@@ -41,8 +56,7 @@ void WirelessChargeManager::enter_wireless_mode() {
 
     // 仅控制 MP4201：启用并设为恒功率 120W
     // BuckBoost 由 PM 的 QUICKCHARGE 模式继续管理，不在此处操作
-    MP4201_Enable(&mp4201_, 1);
-    MP4201_SetCP_Target(&mp4201_, 120,0, 0.005);
+    MP4201_Enable(&mp4201_, 0);
 
     // 启动负载调制器
     // modulator_.start();
@@ -54,6 +68,7 @@ void WirelessChargeManager::exit_wireless_mode() {
     // 关闭 MP4201
     MP4201_Enable(&mp4201_, 0);
 
+    mp4201_started_ = false;
     // 不停止负载调制器
     // modulator_.stop();
 

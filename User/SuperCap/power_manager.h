@@ -98,6 +98,11 @@ public:
         return chassis_cmd_.desired_power_limit;
     }
 
+    //是否允许wcm开启MP4201
+    [[nodiscard]] bool allow_wireless_mp4201_start() const {
+        return wireless_active && is_wireless_override_active() && !wireless_discharge_ok_smtrg.state;
+    }
+
     // 获取压缩后的状态码
     [[nodiscard]] uint8_t get_mode_and_state() const { return mode << 4 | state; }
 

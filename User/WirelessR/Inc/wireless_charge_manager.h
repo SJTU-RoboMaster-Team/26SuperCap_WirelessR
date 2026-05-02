@@ -48,7 +48,7 @@ public:
     float supercap_in_energy = 0;    // 累计超电输入能量 (J)
     float chassis_out_energy = 0;    // 累计底盘输出能量 (J)
     uint32_t chassis_energy_bonus_ = 0; // 累计底盘能量 bonus
-
+    bool mp4201_started_ = false;
 private:
     MP4201_Handle_t& mp4201_;
     PowerManager& pm_;
