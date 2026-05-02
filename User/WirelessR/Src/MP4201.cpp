@@ -39,6 +39,12 @@ static void MP4201_MarkDisconnected(MP4201_Handle_t* dev) {
     dev->isCVphase = false;
     dev->wpt_switch_flag_ = false;
     dev->pi.integral_sum = 0.0f;
+    dev->tx_in_flight_ = MP4201_TX_NONE;
+    dev->tx_enable_val_ = 0;
+    dev->tx_cp_power = 0.0f;
+    dev->tx_cp_kp = 0.0f;
+    dev->tx_cp_ki = 0.0f;
+    dev->pending_bit_ = {};
 }
 
 /**
