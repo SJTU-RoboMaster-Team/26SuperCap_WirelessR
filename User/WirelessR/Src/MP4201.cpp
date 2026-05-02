@@ -48,7 +48,7 @@ HAL_StatusTypeDef MP4201_Init(MP4201_Handle_t* dev, I2C_HandleTypeDef* hi2c) {
     dev->hi2c = hi2c;
     dev->devAddr = MP4201_ADDR_DEFAULT;
     dev->state = MP4201_STATE_IDLE;
-    dev->controlMode = MP4201_MODE_CV;
+    dev->controlMode = MP4201_MODE_CP;
     dev->isMaxIout = false;
     dev->isCVphase = false;
     dev->calculated_vout_cmd = 0;
@@ -58,6 +58,14 @@ HAL_StatusTypeDef MP4201_Init(MP4201_Handle_t* dev, I2C_HandleTypeDef* hi2c) {
     dev->is_connected = false;
     dev->needs_i2c_recovery = false;
     dev->lost_connection_tick = 0;
+    dev->maxVout = 0.0f;
+    dev->maxIout = 0.0f;
+    dev->isEnabled = 0;
+    dev->lastUpdateTime = 0;
+    dev->err_status[0] = 0;
+    dev->err_status[1] = 0;
+    dev->pi.out_max = 0.0f;
+    dev->pi.out_min = 0.0f;
     dev->vin_meas = 0;
     dev->iin_meas = 0;
     dev->vout_meas  = 0;
