@@ -163,27 +163,12 @@
         <Ww>
           <count>1</count>
           <WinNumber>1</WinNumber>
-          <ItemText>bbm</ItemText>
+          <ItemText>load_modulator</ItemText>
         </Ww>
         <Ww>
           <count>2</count>
           <WinNumber>1</WinNumber>
-          <ItemText>set_voltage</ItemText>
-        </Ww>
-        <Ww>
-          <count>3</count>
-          <WinNumber>1</WinNumber>
-          <ItemText>load_modulator</ItemText>
-        </Ww>
-        <Ww>
-          <count>4</count>
-          <WinNumber>1</WinNumber>
-          <ItemText>\\26_SuperCap_WirelessR_V2\../User/callback.cpp\load_modulator.modulator_state_</ItemText>
-        </Ww>
-        <Ww>
-          <count>5</count>
-          <WinNumber>1</WinNumber>
-          <ItemText>errcode_dbg</ItemText>
+          <ItemText>wcm</ItemText>
         </Ww>
       </WatchWindow1>
       <WatchWindow2>
@@ -226,6 +211,16 @@
           <count>7</count>
           <WinNumber>2</WinNumber>
           <ItemText>enablestatus</ItemText>
+        </Ww>
+        <Ww>
+          <count>8</count>
+          <WinNumber>2</WinNumber>
+          <ItemText>bbm</ItemText>
+        </Ww>
+        <Ww>
+          <count>9</count>
+          <WinNumber>2</WinNumber>
+          <ItemText>set_voltage</ItemText>
         </Ww>
       </WatchWindow2>
       <ScvdPack>
