@@ -298,7 +298,7 @@ void PowerManager::handle_wireless_override() {
     // ─── 以下逻辑仅在覆盖激活时执行 ───
 
     // 1. 覆盖功率限制（由底盘通过 CAN 命令指定，超电内部决定具体功率值）
-    power_limit = max_charging_pwr = 5.0f;
+    power_limit = max_charging_pwr = 0.0f;
 
     // 2. 无线充电模式下放电截止：电容放至 16V 后禁止继续放电
     if (!wireless_discharge_ok_smtrg.state) {
