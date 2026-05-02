@@ -547,9 +547,9 @@ static void MP4201_RunControlAlgorithm(MP4201_Handle_t* dev) {
         // 逻辑：
         // - 当电压差 < 0.02V (非常接近满电) -> 进入 CV 锁定状态 (State = 1)
         // - 当电压差 > 2.0V (电压掉下来了) -> 回到 CP 调节状态 (State = 0)
-        if (schmitt_trigger_CV_phase == 0 && fabs(dev->vout_meas - dev->maxVout) < 0.02f) {
+        if (schmitt_trigger_CV_phase == 0 && (fabs(dev->vout_meas - dev->maxVout) < 0.02f || dev->vout_meas > dev->maxVout)) {
             schmitt_trigger_CV_phase = 1; // 进入 CV 临界区
-        } else if (schmitt_trigger_CV_phase == 1 && fabs(dev->vout_meas - dev->maxVout) > 2.0f) {
+        } else if (schmitt_trigger_CV_phase == 1 && (dev->maxVout - dev->vout_meas < 3.0f && dev->maxVout - dev->vout_meas > 0.0f)) {
             schmitt_trigger_CV_phase = 0; // 退出 CV 临界区
         }
 
