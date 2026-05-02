@@ -211,6 +211,7 @@ void PowerManager::compute_and_apply_target_power() {
     //   pwr_gap > 0: 功率有余 → 充电
     //   pwr_gap < 0: 功率不足 → 放电
     float pwr_gap = power_limit - filtered_out_pwr.val + compensation;
+    if (is_wireless_override_active()) {pwr_gap -= 100;}
 
     // 滞后补偿：若电容功率跟随存在滞后，融合当前测量值以平滑控制
     if (follow_trend_estimator.trend == FollowTrendEstimator::LAGGING) {
