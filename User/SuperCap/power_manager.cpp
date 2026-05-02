@@ -95,7 +95,7 @@ void PowerManager::check_cap_status() {
     cap_limit_60power_smtrg.update(bbm.filtered_v_c.val);
     cap_limit_30power_smtrg.update(bbm.filtered_v_c.val);
     cap_low_smtrg.update(bbm.filtered_v_c.val);
-    wireless_discharge_ok_smtrg.update(bbm.filtered_v_c.val);
+    //wireless_discharge_ok_smtrg.update(bbm.filtered_v_c.val);
 
     // 将施密特触发器状态同步到标志位
     full_charge = cap_full_smtrg.state;   // 电压 ≥ 26V 后置位，≤ 25.5V 复位
@@ -284,18 +284,30 @@ void PowerManager::handle_wireless_override() {
     //   3. 主机主动下发 desired_power_limit = 0（如出发后临时取消）
     // 若主机下发命令但最终未去充电区，超电侧不做超时处理，由主机负责取消。
 
+    const bool override_active = is_wireless_override_active();
     // 检测 wireless_active 下降沿（离开充电区）
     if (!wireless_active && last_wireless_active_) {
         clear_wireless_state();
     }
     last_wireless_active_ = wireless_active;
 
-    // 若未激活覆盖，恢复正常功率限制
-    if (!is_wireless_override_active()) {
-        return;
+    if (!override_active && last_wireless_override_active) {
+        clear_wireless_state();
     }
 
+    if (override_active && !last_wireless_override_active) {
+        // 检测到无线充覆盖指令上升沿
+        wireless_discharge_ok_smtrg.state = true;
+        last_wireless_discharge_ok_ = true;
+    }
+    last_wireless_override_active = override_active;
+
+    // 若未激活覆盖，恢复正常功率限制
+    if (!override_active) {
+        return;
+    }
     // ─── 以下逻辑仅在覆盖激活时执行 ───
+    wireless_discharge_ok_smtrg.update(bbm.filtered_v_c.val);
 
     // 1. 覆盖功率限制（由底盘通过 CAN 命令指定，超电内部决定具体功率值）
     power_limit = max_charging_pwr = 0.0f;
@@ -314,6 +326,7 @@ void PowerManager::handle_wireless_override() {
 
 void PowerManager::clear_wireless_state() {
     chassis_cmd_.desired_power_limit = 0;
-    wireless_discharge_ok_smtrg.state = true; // 复位为"允许放电"初始状态
+    wireless_discharge_ok_smtrg.state = true;
     last_wireless_discharge_ok_ = true;
+    last_wireless_override_active = false;
 }

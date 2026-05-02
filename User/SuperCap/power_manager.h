@@ -122,7 +122,8 @@ private:
     ChassisCmd chassis_cmd_{};
     // 用于检测 wireless_active 下降沿（离开无线充区时清空无线相关状态）
     bool last_wireless_active_ = false;
-
+    // 用于检测 chassis_cmd 上升/下降沿，
+    bool last_wireless_override_active = false;
     // 无线充覆盖：检测 wireless_discharge_ok_smtrg 上升沿（充满时自动退出覆盖）
     bool last_wireless_discharge_ok_ = true;
 
