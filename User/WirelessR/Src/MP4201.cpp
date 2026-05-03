@@ -8,8 +8,6 @@
 
 #include "../Inc/MP4201.h"
 
-#include <future>
-
 #include "../../config.h"
 #include "stm32g4xx_hal.h"
 

@@ -100,8 +100,8 @@
       <flags>2</flags>
       <showCmd>3</showCmd>
       <MinPosition>
-        <xPos>-21333</xPos>
-        <yPos>-21333</yPos>
+        <xPos>-32000</xPos>
+        <yPos>-32000</yPos>
       </MinPosition>
       <MaxPosition>
         <xPos>-1</xPos>
@@ -3631,9 +3631,9 @@
       </Doc>
       <Doc>
         <Name>startup_stm32g474xx.s</Name>
-        <ColumnNumber>0</ColumnNumber>
+        <ColumnNumber>27</ColumnNumber>
         <TopLine>192</TopLine>
-        <CurrentLine>196</CurrentLine>
+        <CurrentLine>199</CurrentLine>
         <Folding>0</Folding>
         <ContractedFolders></ContractedFolders>
         <PaneID>0</PaneID>
@@ -3648,7 +3648,7 @@
         <PaneID>0</PaneID>
       </Doc>
       <Doc>
-        <Name>RTE/CMSIS-View/EventRecorderConf.h</Name>
+        <Name>RTE\CMSIS-View\EventRecorderConf.h</Name>
         <ColumnNumber>27</ColumnNumber>
         <TopLine>9</TopLine>
         <CurrentLine>19</CurrentLine>
@@ -3657,7 +3657,7 @@
         <PaneID>0</PaneID>
       </Doc>
       <Doc>
-        <Name>D:/Programs/KEIL_V5/ARM/CMSIS-View/1.2.0/EventRecorder/Source/EventRecorder.c</Name>
+        <Name>D:\Programs\KEIL_V5\ARM\CMSIS-View\1.2.0\EventRecorder\Source\EventRecorder.c</Name>
         <ColumnNumber>0</ColumnNumber>
         <TopLine>822</TopLine>
         <CurrentLine>826</CurrentLine>

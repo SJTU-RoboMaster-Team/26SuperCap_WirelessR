@@ -722,37 +722,15 @@
         <Group>
           <GroupName>::CMSIS-Compiler</GroupName>
         </Group>
-        <Group>
-          <GroupName>::CMSIS-View</GroupName>
-        </Group>
       </Groups>
     </Target>
   </Targets>
 
   <RTE>
-    <apis>
-      <api Capiversion="1.1.0" Cclass="CMSIS-Compiler" Cgroup="STDOUT" condition="CortexDevice" exclusive="1">
-        <package name="CMSIS-Compiler" schemaVersion="1.7.36" url="https://www.keil.com/pack/" vendor="ARM" version="2.1.0"/>
-        <targetInfos>
-          <targetInfo name="26_SuperCap_WirelessR_V2"/>
-        </targetInfos>
-      </api>
-    </apis>
+    <apis/>
     <components>
       <component Cclass="CMSIS-Compiler" Cgroup="CORE" Cvendor="ARM" Cversion="1.1.0" condition="ARMCC CortexDevice">
         <package name="CMSIS-Compiler" schemaVersion="1.7.36" url="https://www.keil.com/pack/" vendor="ARM" version="2.1.0"/>
-        <targetInfos>
-          <targetInfo name="26_SuperCap_WirelessR_V2"/>
-        </targetInfos>
-      </component>
-      <component Capiversion="1.1.0" Cclass="CMSIS-Compiler" Cgroup="STDOUT" Csub="Event Recorder" Cvendor="ARM" Cversion="1.1.0" condition="CORE EVR">
-        <package name="CMSIS-Compiler" schemaVersion="1.7.36" url="https://www.keil.com/pack/" vendor="ARM" version="2.1.0"/>
-        <targetInfos>
-          <targetInfo name="26_SuperCap_WirelessR_V2"/>
-        </targetInfos>
-      </component>
-      <component Cclass="CMSIS-View" Cgroup="Event Recorder" Cvariant="DAP" Cvendor="ARM" Cversion="1.6.0" condition="EventRecorder">
-        <package name="CMSIS-View" schemaVersion="1.7.36" url="https://www.keil.com/pack/" vendor="ARM" version="1.2.0"/>
         <targetInfos>
           <targetInfo name="26_SuperCap_WirelessR_V2"/>
         </targetInfos>
@@ -766,12 +744,10 @@
     </components>
     <files>
       <file attr="config" category="header" name="EventRecorder\Config\EventRecorderConf.h" version="1.1.0">
-        <instance index="0">RTE\CMSIS-View\EventRecorderConf.h</instance>
+        <instance index="0" removed="1">RTE\CMSIS-View\EventRecorderConf.h</instance>
         <component Cclass="CMSIS-View" Cgroup="Event Recorder" Cvariant="DAP" Cvendor="ARM" Cversion="1.6.0" condition="EventRecorder"/>
         <package name="CMSIS-View" schemaVersion="1.7.36" url="https://www.keil.com/pack/" vendor="ARM" version="1.2.0"/>
-        <targetInfos>
-          <targetInfo name="26_SuperCap_WirelessR_V2"/>
-        </targetInfos>
+        <targetInfos/>
       </file>
     </files>
   </RTE>
