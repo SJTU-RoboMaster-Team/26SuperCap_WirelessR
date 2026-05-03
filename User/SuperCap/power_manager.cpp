@@ -45,7 +45,7 @@ void PowerManager::handle() {
         power_parameter = referee.get_parameter();
         power_limit = max_charging_pwr = power_parameter.chassis_power_limit;
     }else {
-        // 裁判系统断联！！！
+        // 裁判系统断联
         target_buffer = 40;
         power_parameter.buffer_energy = 40;
         power_limit = max_charging_pwr = power_parameter.chassis_power_limit = 50;
@@ -90,7 +90,7 @@ void PowerManager::handle() {
 }
 
 void PowerManager::check_cap_status() {
-    // 更新全部电压迟滞比较器
+    // 更新电压迟滞比较器
     cap_full_smtrg.update(bbm.filtered_v_c.val);
     cap_limit_60power_smtrg.update(bbm.filtered_v_c.val);
     cap_limit_30power_smtrg.update(bbm.filtered_v_c.val);
@@ -115,8 +115,8 @@ void PowerManager::check_cap_status() {
     }
 }
 
-    // Buffer Mode 目标：
 void PowerManager::buffer_mode() {
+    // Buffer Mode 目标：
     //   底盘实际功率 ≤ 裁判系统功率上限
     //   利用超级电容吸收/释放功率差额，维护 buffer 能量在安全水位
 
