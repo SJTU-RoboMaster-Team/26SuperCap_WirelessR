@@ -223,7 +223,7 @@ HAL_StatusTypeDef MP4201_ConfigWirelessInput(MP4201_Handle_t* dev, float minVin)
     }
 
     // 2. 设置阈值电压 (VIN_REG_THLD)
-    uint16_t vin_reg_val = (uint16_t)(minVin * SCALE_VOUT_SET_LSB_INV); // 系数与 VOUT 相同 (0.02V/LSB)
+    const auto vin_reg_val = static_cast<uint16_t>(minVin * SCALE_VOUT_SET_LSB_INV); // 系数与 VOUT 相同 (0.02V/LSB)
     return MP4201_WriteReg_Blocking(dev, REG_VIN_REG_THLD, vin_reg_val);
 }
 
@@ -242,8 +242,8 @@ void MP4201_SetCV_Target(MP4201_Handle_t* dev, float voltage) {
         voltage = dev->maxVout;
     }
 
-    uint16_t iout_reg = (uint16_t)(dev->maxIout * SCALE_ILIM_SET_LSB_INV);
-    uint32_t timeout = HAL_GetTick();
+    const auto iout_reg = static_cast<uint16_t>(dev->maxIout * SCALE_ILIM_SET_LSB_INV);
+    const uint32_t timeout = HAL_GetTick();
     while (dev->state != MP4201_STATE_IDLE) {
         if (HAL_GetTick() - timeout > 10) {
             break;
@@ -305,7 +305,7 @@ HAL_StatusTypeDef MP4201_StartDMAUpdate(MP4201_Handle_t* dev) {
 
         // 先把电压设为 26V (满充电压)
         // 这样 MP4201 会试图输出 26V，然后进入动态调节的 CC 模式
-        uint16_t vout_reg = (uint16_t)(dev->maxVout * SCALE_VOUT_SET_LSB_INV);
+        const auto vout_reg = static_cast<uint16_t>(dev->maxVout * SCALE_VOUT_SET_LSB_INV);
         dev->dmaTxBuffer[0] = vout_reg & 0xFF;
         dev->dmaTxBuffer[1] = (vout_reg >> 8) & 0xFF;
         dev->state = MP4201_STATE_WRITE_CTRL;
@@ -354,7 +354,7 @@ void MP4201_OnRxCplt(MP4201_Handle_t* dev) {
 
     switch (dev->state) {
         case MP4201_STATE_READ_VIN: {
-            float new_vin = raw_val * SCALE_READ_V_LSB;
+            float new_vin = static_cast<float>(raw_val) * SCALE_READ_V_LSB;
             dev->vin_meas = new_vin + offset_vin;
             dev->state = MP4201_STATE_READ_VOUT;
             if (HAL_I2C_Mem_Read_DMA(dev->hi2c, dev->devAddr, REG_READ_VOUT, I2C_MEMADD_SIZE_8BIT, dev->dmaRxBuffer, 2)
@@ -365,7 +365,7 @@ void MP4201_OnRxCplt(MP4201_Handle_t* dev) {
             break;
         }
         case MP4201_STATE_READ_VOUT: {
-            float new_vout = raw_val * SCALE_READ_V_LSB;
+            float new_vout = static_cast<float>(raw_val) * SCALE_READ_V_LSB;
 
             // 低通滤波
             if (dev->vout_meas < 0.1f) {
@@ -385,7 +385,7 @@ void MP4201_OnRxCplt(MP4201_Handle_t* dev) {
             break;
         }
         case MP4201_STATE_READ_IIN: {
-            float new_iin = raw_val * SCALE_READ_I_LSB;
+            float new_iin = static_cast<float>(raw_val) * SCALE_READ_I_LSB;
             if (new_iin > 1.0f) { dev->iin_meas = new_iin + offset_iin; } else { dev->iin_meas = new_iin; }
             dev->state = MP4201_STATE_READ_IOUT;
             if (HAL_I2C_Mem_Read_DMA(dev->hi2c, dev->devAddr, REG_READ_IOUT, I2C_MEMADD_SIZE_8BIT, dev->dmaRxBuffer, 2)
@@ -396,7 +396,7 @@ void MP4201_OnRxCplt(MP4201_Handle_t* dev) {
             break;
         }
         case MP4201_STATE_READ_IOUT: {
-            float new_iout = raw_val * SCALE_READ_I_LSB;
+            float new_iout = static_cast<float>(raw_val) * SCALE_READ_I_LSB;
 
             // 低通滤波
             if (dev->iout_meas < 1e-5 && new_iout > 0.0f) {
