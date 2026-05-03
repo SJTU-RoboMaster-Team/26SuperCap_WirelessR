@@ -98,7 +98,8 @@ public:
         return chassis_cmd_.desired_power_limit;
     }
 
-    //是否允许wcm开启MP4201
+    //是否允许wcm开启MP4201 同时满足3个条件
+    // 1. 主机请求无线充电 2. 无线充电端口有电压 3. 电容电压放到下阈值
     [[nodiscard]] bool allow_wireless_mp4201_start() const {
         return wireless_active && is_wireless_override_active() && !wireless_discharge_ok_smtrg.state;
     }

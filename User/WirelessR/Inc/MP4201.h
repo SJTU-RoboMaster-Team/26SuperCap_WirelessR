@@ -35,7 +35,7 @@ extern "C" {
 #define REG_OPERATION            0x01
 #define REG_VOUT_COMMAND         0x21
 #define REG_IOUT_OC_FAULT_LIMIT  0x46
-#define REG_VIN_REG_THLD         0x59 // 新增：输入电压调节阈值
+#define REG_VIN_REG_THLD         0x59
 #define REG_READ_VIN             0x88
 #define REG_READ_IIN             0x89
 #define REG_READ_VOUT            0x8B
@@ -192,6 +192,7 @@ HAL_StatusTypeDef MP4201_Enable(MP4201_Handle_t* dev, uint8_t enable);
 
 /**
  * @brief 配置无线充电输入保护 (关键)
+ * @param dev
  * @param minVin: 最低输入电压限制 (V)。当无线充输入低于此值时，MP4201会自动减小充电功率。
  * 建议设为无线充空载电压的 80% 左右。
  */

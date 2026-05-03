@@ -17,14 +17,14 @@ void WirelessChargeManager::handle() {
         vin_ok = vin_trigger_.state;
     }
 
-    // 2. 模式切换
+    // 模式切换
     if (vin_ok && !wireless_active_) {
         enter_wireless_mode();
     } else if (!vin_ok && wireless_active_) {
         exit_wireless_mode();
     }
 
-    // 3. 更新实时功率
+    // 更新实时功率
     wireless_in_power = mp4201_.vout_meas * mp4201_.iout_meas; //TODO: 替换成滤波后的值
 
     // 4. 无线充模式下的能量统计
@@ -32,9 +32,10 @@ void WirelessChargeManager::handle() {
         energy_accounting();
     }
 
-    // 5. 同步标志位给 PM
+    // 同步标志位给 PM
     pm_.wireless_active = wireless_active_;
 
+    // 将启动 MP4201 权限转移给 PM
     if (wireless_active_) {
         if (pm_.allow_wireless_mp4201_start()) {
             if (!mp4201_started_) {
@@ -52,26 +53,21 @@ void WirelessChargeManager::handle() {
 }
 
 void WirelessChargeManager::enter_wireless_mode() {
+    // 仅设置标志位，无线充在线，默认关闭4201
     wireless_active_ = true;
 
-    // 仅控制 MP4201：启用并设为恒功率 120W
-    // BuckBoost 由 PM 的 QUICKCHARGE 模式继续管理，不在此处操作
     MP4201_Enable(&mp4201_, 0);
 
-    // 启动负载调制器
-    // modulator_.start();
+    // 负载调制器默认启动
 }
 
 void WirelessChargeManager::exit_wireless_mode() {
     wireless_active_ = false;
 
-    // 关闭 MP4201
     MP4201_Enable(&mp4201_, 0);
 
     mp4201_started_ = false;
     // 不停止负载调制器
-    // modulator_.stop();
-
     // 不清零energy_accounting
 }
 

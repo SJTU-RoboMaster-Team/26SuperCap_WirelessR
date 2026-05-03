@@ -86,13 +86,13 @@ HAL_StatusTypeDef MP4201_Init(MP4201_Handle_t* dev, I2C_HandleTypeDef* hi2c) {
     dev->pi.Ki = 0.01f;
     dev->pi.integral_sum = 0.0f;
 
-    // 1. 硬件激活 (优化：避免重试时反复产生 10ms 延时)
+    // 硬件激活
     if (HAL_GPIO_ReadPin(GPIO_PORT_EN_4201, GPIO_PIN_EN_4201) == GPIO_PIN_RESET) {
         HAL_GPIO_WritePin(GPIO_PORT_EN_4201, GPIO_PIN_EN_4201, GPIO_PIN_SET);
         HAL_Delay(10); // 仅首次冷启动时需要等待
     }
 
-    // 2. 检查设备 (Ping) - 将超时时间从 100ms 缩短到 10ms，提升非阻塞轮询速度
+    // 只有先ping通才能进行后续操作
     if (HAL_I2C_IsDeviceReady(dev->hi2c, dev->devAddr, 1, 10) != HAL_OK) {
         MP4201_MarkDisconnected(dev);
         return HAL_ERROR;
@@ -110,19 +110,19 @@ HAL_StatusTypeDef MP4201_ConfigBasic(MP4201_Handle_t* dev) {
     if (!dev->is_connected)
         return HAL_ERROR;
 
-    // 软关机 (Soft Shutdown) - 必须先关机才能改方向
+    // 必须先关机才能改方向
     uint8_t stop_cmd = 0x00;
     if (HAL_I2C_Mem_Write(dev->hi2c, dev->devAddr, REG_OPERATION, I2C_MEMADD_SIZE_8BIT, &stop_cmd, 1, 100) != HAL_OK) {
         MP4201_MarkDisconnected(dev);
         return HAL_ERROR;
     }
-    HAL_Delay(200); // 这是必要的放电延时，由于它仅在连接成功的时刻执行一次，所以可以接受阻塞
+    HAL_Delay(200); // 放电延时
 
     // 修改方向与模式
     uint8_t ctrl1_val = 0;
-    // 即使读取失败，我们也给一个安全的默认值
+    // 即使读取失败，也给一个安全的默认值
     if (HAL_I2C_Mem_Read(dev->hi2c, dev->devAddr, REG_MFR_CTRL1, I2C_MEMADD_SIZE_8BIT, &ctrl1_val, 1, 100) != HAL_OK) {
-        ctrl1_val = 0x08; // 读失败时的安全默认值 (Bit 3=1)
+        ctrl1_val = 0b00001001; // 手册默认值
     }
 
     ctrl1_val |= (1 << 7); // Bit 7: VIN -> OUT (DIR)
@@ -213,8 +213,8 @@ HAL_StatusTypeDef MP4201_ConfigWirelessInput(MP4201_Handle_t* dev, float minVin)
         return HAL_ERROR;
     }
 
-    // 1. 开启 VIN Regulation 功能 (MFR_OVP_CTRL bit 7)
-    uint8_t config_byte = 0b11011011; // 1000 1000
+    // 1. 开启 VIN Regulation 功能
+    uint8_t config_byte = 0b11011011;
 
     if (HAL_I2C_Mem_Write(dev->hi2c, dev->devAddr, REG_MFR_OVP_CTRL, I2C_MEMADD_SIZE_8BIT, &config_byte, 1, 100) !=
         HAL_OK) {
@@ -268,29 +268,9 @@ void MP4201_SetCP_Target(MP4201_Handle_t* dev, float power, float Kp, float Ki) 
     dev->pending_bit_.set_cp_pending_power = power;
     dev->pending_bit_.set_cp_pending_kp = Kp;
     dev->pending_bit_.set_cp_pending_ki = Ki;
-    return;
-
-    dev->controlMode = MP4201_MODE_CP;
-    dev->targetVal = power;
-    dev->pi.Kp = Kp;
-    dev->pi.Ki = Ki;
-
-    // 1. 积分器初始化：从当前实际电流开始积分，实现无扰切换
-    if (dev->iout_meas > 0.1f) {
-        dev->pi.integral_sum = dev->iout_meas;
-    } else {
-        // 如果刚启动没电流，给一个初始小电流（例如 0.1A）起步
-        dev->pi.integral_sum = 0.1f;
-    }
-
-    // 2. 先把电压设为 26V (满充电压)
-    // 这样 MP4201 会试图输出 26V，然后进入动态调节的 CC 模式
-    uint16_t vout_reg = (uint16_t)(dev->maxVout * SCALE_VOUT_SET_LSB_INV);
-    dev->state = MP4201_STATE_WRITE_CTRL;
-    MP4201_WriteReg_Blocking(dev, REG_VOUT_COMMAND, vout_reg);
-    dev->state = MP4201_STATE_IDLE;
 }
 
+// 状态机
 HAL_StatusTypeDef MP4201_StartDMAUpdate(MP4201_Handle_t* dev) {
     if (!dev->is_connected) {
         dev->state = MP4201_STATE_IDLE;
@@ -355,7 +335,6 @@ HAL_StatusTypeDef MP4201_StartDMAUpdate(MP4201_Handle_t* dev) {
                                                     dev->dmaRxBuffer,
                                                     2);
 
-    // 如果启动失败 (同步失败)
     if (status != HAL_OK) {
         MP4201_MarkDisconnected(dev);
     }
@@ -493,26 +472,6 @@ void MP4201_OnTxCplt(MP4201_Handle_t* dev) {
 
       dev->tx_in_flight_ = MP4201_TX_NONE;
       dev->state = MP4201_STATE_IDLE;
-    //
-    // if (dev->pending_bit_.enable_pending) {
-    //     dev->pending_bit_.enable_pending = false;
-    //     dev->isEnabled = dev->pending_bit_.enable_pending_val;
-    //     dev->pi.integral_sum = 0.0f;
-    // }else if (dev->pending_bit_.set_cp_pending) {
-    //     dev->pending_bit_.set_cp_pending = false;
-    //     dev->controlMode = MP4201_MODE_CP;
-    //     dev->targetVal = dev->pending_bit_.set_cp_pending_power;
-    //     dev->pi.Kp = dev->pending_bit_.set_cp_pending_kp;
-    //     dev->pi.Ki = dev->pending_bit_.set_cp_pending_ki;
-    //     // 积分器初始化：从当前实际电流开始积分，实现无扰切换
-    //     if (dev->iout_meas > 0.1f) {
-    //         dev->pi.integral_sum = dev->iout_meas;
-    //     } else {
-    //         // 如果刚启动没电流，给一个初始小电流起步
-    //         dev->pi.integral_sum = 0.1f;
-    //     }
-    // }
-    // dev->state = MP4201_STATE_IDLE;
 }
 
 void MP4201_OnError(MP4201_Handle_t* dev) {
@@ -703,28 +662,26 @@ void MP4201_SetDirection(MP4201_Handle_t* dev, uint8_t direction) {
 
     bool was_enabled = dev->isEnabled;
 
-    // 软件停机 (Soft Stop)
     MP4201_Enable(dev, 0);
 
-    // 安全延时 (Safety Delay)
     // 手册建议等待 300ms 以上让输出电容放电，防止反向电流冲击
     HAL_Delay(300);
 
-    // 修改方向 (Change Direction) 和 dead time
-    // 1. 先读取 MFR_CTRL1 (0xD0) 的当前值，避免覆盖其他配置（如 UVLO, 死区时间等）
+    // 修改方向和 dead time
+    // 先读取 MFR_CTRL1 的当前值，避免覆盖其他配置
     uint8_t ctrl1_val = 0;
     if (HAL_I2C_Mem_Read(dev->hi2c, dev->devAddr, REG_MFR_CTRL1, I2C_MEMADD_SIZE_8BIT, &ctrl1_val, 1, 100) ==
         HAL_OK) {
-        // 2. 修改 Bit 7 (DIR)
+        // 修改 Bit 7 (DIR)
         if (direction == MP4201_DIR_CHARGE) {
             ctrl1_val |= (1 << 7); // 置 1：VIN -> OUT
         } else {
             ctrl1_val &= ~(1 << 7); // 清 0：OUT -> VIN
         }
-        // dead time = 30ns
+        // 修改 dead time = 30ns
         ctrl1_val |= (1 << 1);
         ctrl1_val |= (1 << 0);
-        // 3. 写回寄存器
+
         if (HAL_I2C_Mem_Write(dev->hi2c, dev->devAddr, REG_MFR_CTRL1, I2C_MEMADD_SIZE_8BIT, &ctrl1_val, 1, 100) !=
             HAL_OK) {
             MP4201_MarkDisconnected(dev);
@@ -735,7 +692,6 @@ void MP4201_SetDirection(MP4201_Handle_t* dev, uint8_t direction) {
         return;
     }
 
-    // 软件启动 (Soft Start)
     MP4201_Enable(dev, was_enabled);
 }
 
