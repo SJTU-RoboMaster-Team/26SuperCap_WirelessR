@@ -240,7 +240,6 @@ void HAL_FDCAN_RxFifo0Callback(FDCAN_HandleTypeDef *hfdcan, uint32_t RxFifo0ITs)
             fdcan_dlc_to_bytes(rx_header.DataLength) < sizeof(ChassisCmd)) {
             return;
         }
-        // todo: can包id待C板决定
         ChassisCmd cmd{};
         cmd.desired_power_limit = fdcan_rx_data[0];
         pm.set_chassis_cmd(cmd);
