@@ -113,11 +113,11 @@ void main_control_loop() {
 
     tick_40us++;
 
-    // bbm.stop();
+    bbm.stop();
     // bbm.set_voltage_loop(set_voltage);
     // bbm.start();
     // bbm.handle();
-    // return;
+    return;
     const bool in_calibrate_mode        = (pm.mode == PowerManager::CALIBRATE);
     const bool referee_connected        = referee.connected();
     const bool referee_disconnect_alarm = !in_calibrate_mode && !referee_connected && tick_40us > 75000;

@@ -6,44 +6,38 @@
 #ifndef LOAD_MODULATION_H
 #define LOAD_MODULATION_H
 
-#include "main.h"
-#include "../Inc/timer.h"
 #include "../Inc/MP4201.h"
+#include "../Inc/timer.h"
+#include "main.h"
 
-#define FRAME_LEN (8+1+9+1+1) // 20 bits
+#define FRAME_LEN (8 + 1 + 9 + 1 + 1) // 20 bits
 #define DATA_LEN 9
 #define START_SIGN 0x1FE
 #define STOP_SIGN 0x00
 
 #ifndef MOD_GPIO_PORT
-#define MOD_GPIO_PORT GPIOA
-#define MOD_PIN       GPIO_PIN_8
+    #define MOD_GPIO_PORT GPIOA
+    #define MOD_PIN GPIO_PIN_8
 #endif
 
 // 整合进来的 WPTMsg 结构体
 struct WPTMsg {
-    uint8_t wpt_power_ = 0; // LSB of uint16_t
-    bool switch_flag_ = false;  // on: 0x01, off: 0x00
-}__attribute__((packed));
+    uint8_t payload_ = 0;    // LSB of uint16_t
+    bool switch_flag_ = false; // on: 0x01, off: 0x00
+} __attribute__((packed));
 
 class Modulator {
 public:
-    enum ModulatorState {
-        START,
-        STOP,
-        BUSY,
-        IDLE,
-        LOCK
-    } modulator_state_ = BUSY;
+    enum ModulatorState { START, STOP, BUSY, IDLE, LOCK } modulator_state_ = BUSY;
 
-    enum ModulatorStatus {
-        OK,
-        ERROR,
-        TIMEOUT
-    };
+    enum ModulatorStatus { OK, ERROR, TIMEOUT };
+
+    struct Encoder {
+        enum Frametype { POWER, VOLTAGE } frametype_;
+    } encoder_;
 
     // 构造函数移除了 Encoder 参数，因为已经内部整合
-    Modulator(FreqMeter &freq_meter) : freq_meter_(freq_meter) {
+    Modulator(FreqMeter& freq_meter): freq_meter_(freq_meter) {
         bit_index_ = 0;
         half_bit_ = 0;
         first_ = true;
@@ -51,11 +45,11 @@ public:
         data_frame_ = 0;
     }
 
-    FreqMeter &freq_meter_;
+    FreqMeter& freq_meter_;
 
     // 状态控制变量
-    uint8_t bit_index_;    // 当前进行到一帧中的第几个位 (0 ~ FRAME_LEN-1)
-    uint8_t half_bit_;     // 当前是前半周期还是后半周期 (0: 前半部分, 1: 后半部分)
+    uint8_t bit_index_; // 当前进行到一帧中的第几个位 (0 ~ FRAME_LEN-1)
+    uint8_t half_bit_;  // 当前是前半周期还是后半周期 (0: 前半部分, 1: 后半部分)
     uint32_t data_frame_ = 0;
     bool first_;
 

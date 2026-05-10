@@ -150,7 +150,7 @@
         <SetRegEntry>
           <Number>0</Number>
           <Key>ST-LINKIII-KEIL_SWO</Key>
-          <Name>-U24171615C116303030303032 -O2254 -SF10000 -C0 -A0 -I2 -HNlocalhost -HP7184 -P1 -N00("") -D00(00000000) -L00(0) -TO131090 -TC10000000 -TT10000000 -TP21 -TDS8007 -TDT0 -TDC1F -TIEFFFFFFFF -TIP8 -FO7 -FD20000000 -FC1000 -FN1 -FF0STM32G47x-8x_128.FLM -FS08000000 -FL020000 -FP0($$Device:STM32G474CBTx$CMSIS\Flash\STM32G47x-8x_128.FLM) -WA0 -WE0 -WVCE4 -WS2710 -WM0 -WP2 -WK0-R0</Name>
+          <Name>-U24171615C116303030303032 -O2254 -SF10000 -C0 -A0 -I2 -HNlocalhost -HP7184 -P1 -N00("ARM CoreSight SW-DP (ARM Core") -D00(2BA01477) -L00(0) -TO131090 -TC10000000 -TT10000000 -TP21 -TDS8007 -TDT0 -TDC1F -TIEFFFFFFFF -TIP8 -FO7 -FD20000000 -FC1000 -FN1 -FF0STM32G47x-8x_128.FLM -FS08000000 -FL020000 -FP0($$Device:STM32G474CBTx$CMSIS\Flash\STM32G47x-8x_128.FLM)</Name>
         </SetRegEntry>
       </TargetDriverDllRegistry>
       <Breakpoint/>
@@ -159,6 +159,11 @@
           <count>0</count>
           <WinNumber>1</WinNumber>
           <ItemText>mp4201_dev</ItemText>
+        </Ww>
+        <Ww>
+          <count>1</count>
+          <WinNumber>1</WinNumber>
+          <ItemText>load_modulator</ItemText>
         </Ww>
       </WatchWindow1>
       <WatchWindow2>
@@ -193,13 +198,21 @@
           <ItemText>pm</ItemText>
         </Ww>
       </WatchWindow2>
+      <MemoryWindow1>
+        <Mm>
+          <WinNumber>1</WinNumber>
+          <SubType>0</SubType>
+          <ItemText>\\26_SuperCap_WirelessR_V2\../User/callback.cpp\load_modulator.wpt_msg_</ItemText>
+          <AccSizeX>0</AccSizeX>
+        </Mm>
+      </MemoryWindow1>
       <Tracepoint>
         <THDelay>0</THDelay>
       </Tracepoint>
       <DebugFlag>
         <trace>0</trace>
         <periodic>1</periodic>
-        <aLwin>0</aLwin>
+        <aLwin>1</aLwin>
         <aCover>0</aCover>
         <aSer1>0</aSer1>
         <aSer2>0</aSer2>
