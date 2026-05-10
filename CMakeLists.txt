@@ -38,10 +38,12 @@ enable_language(C ASM)
 file(GLOB_RECURSE SUPERCAP_SOURCES "User/SuperCap/*.c" "User/SuperCap/*.cpp")
 file(GLOB_RECURSE WIRELESSR_SOURCES "User/WirelessR/*.c" "User/WirelessR/*.cpp")
 file(GLOB GLOB_SOURCES "User/*.c" "User/*.cpp")
+file(GLOB SYS_SOURCES "Core/Src/*.c")
 add_executable(${CMAKE_PROJECT_NAME}
         ${SUPERCAP_SOURCES}
         ${WIRELESSR_SOURCES}
         ${GLOB_SOURCES}
+        ${SYS_SOURCES}
 )
 
 # Add STM32CubeMX generated sources
