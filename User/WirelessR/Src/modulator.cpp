@@ -11,7 +11,21 @@ extern MP4201_Handle_t mp4201_dev;
 // 1. 获取 MP4201 原始数据
 void Modulator::update_wpt_msg() {
     wpt_msg_.switch_flag_ = mp4201_dev.wpt_switch_flag_;
-    wpt_msg_.wpt_power_ = (uint8_t)(mp4201_dev.power_meas / 150.f * 255);
+    switch (encoder_.frametype_) {
+        // MSB of payload indicates what the message represents. Bit 0 stands for power, while bit 1 stands for voltage
+        case Encoder::POWER: {
+            wpt_msg_.payload_ = (uint8_t)(mp4201_dev.power_meas / 150.f * 127) | 0x00;
+            encoder_.frametype_ = Encoder::VOLTAGE;
+            break;
+        }
+        case Encoder::VOLTAGE: {
+            wpt_msg_.payload_ = (uint8_t)(mp4201_dev.vin_meas / 50.f * 127) | 0x80;
+            encoder_.frametype_ = Encoder::POWER;
+            break;
+        }
+        default:
+            break;
+    }
 }
 
 // 2. 将数据组装为带有起始位、校验位、停止位的 20 位数据帧
