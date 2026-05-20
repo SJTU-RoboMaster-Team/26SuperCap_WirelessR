@@ -114,10 +114,10 @@ public:
     float target_current = 0;  // A
 
     LowPassFilter filtered_v_c = LowPassFilter(0.f, 0.01);
-    LowPassFilter filtered_i_c = LowPassFilter(0.f, 0.005);
+    LowPassFilter filtered_i_c = LowPassFilter(0.f, 0.01);
     LowPassFilter filtered_v_i = LowPassFilter(0.f, 0.01);
-    LowPassFilter filtered_i_i = LowPassFilter(0.f, 0.005);
-    LowPassFilter filtered_i_o = LowPassFilter(0.f, 0.005);
+    LowPassFilter filtered_i_i = LowPassFilter(0.f, 0.01);
+    LowPassFilter filtered_i_o = LowPassFilter(0.f, 0.01);
 
     enum Mode {
         BUCK,
