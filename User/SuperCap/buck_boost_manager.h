@@ -29,6 +29,11 @@ public:
         } limits;
     } config;
 
+    struct SwitchingConfig {
+        uint32_t min_mode_hold_ticks = 250;
+        uint32_t confirm_ticks = 20;
+    } switching_config;
+
     BuckBoostManager(HalfBridge& left_bridge, HalfBridge& right_bridge, PID& vpid, PID& ipid):
         left_bridge(left_bridge),
         right_bridge(right_bridge),
@@ -63,6 +68,9 @@ public:
         enable = false;
         mode = OFF;
         last_mode = OFF;
+        pending_mode = OFF;
+        pending_mode_ticks = 0;
+        mode_stable_ticks = 0;
         left_bridge.stop();
         right_bridge.stop();
     }
@@ -127,6 +135,9 @@ public:
             mode = BUCKBOOST;
         else if (mode == BUCKBOOST)
             mode = BOOST;
+        pending_mode = OFF;
+        pending_mode_ticks = 0;
+        mode_stable_ticks = 0;
     };
 
     void downgrade() {
@@ -134,6 +145,9 @@ public:
             mode = BUCKBOOST;
         else if (mode == BUCKBOOST)
             mode = BUCK;
+        pending_mode = OFF;
+        pending_mode_ticks = 0;
+        mode_stable_ticks = 0;
     };
 
     Mode get_mode() {
@@ -155,7 +169,7 @@ private:
         I_OUT_V_IN,
     } control_mode = I_LOOP;
 
-    bool enable = false;
+    volatile bool enable = false;
     bool safe_disable_lock = false;
 
     struct Debug {
@@ -164,12 +178,17 @@ private:
     } debug{};
 
     bool auto_mode_switcher = false;
+    uint32_t mode_stable_ticks = 0;
+    uint32_t pending_mode_ticks = 0;
+    Mode pending_mode = OFF;
 
     void switch_mode_reset(); // 模式切换时的重置逻辑
     void mode_switcher();    // 状态机逻辑
     void v_loop_control();   // 电压环控制
     void i_loop_control();   // 电流环控制
     bool safety_check();     // 安全检查
+    [[nodiscard]] Mode decide_target_mode(float mode_v_in, float mode_v_ref) const;
+    [[nodiscard]] float get_mode_reference_voltage() const;
     // void v_out_i_in_control();
     // void i_out_v_in_control();
 
