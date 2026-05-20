@@ -127,10 +127,12 @@ void PowerManager::buffer_mode() {
     const bool over_power    = (filtered_out_pwr.val > power_limit);
     const bool buffer_low    = (power_parameter.buffer_energy < 60);
     const bool power_surplus = (filtered_out_pwr.val < power_limit);
+    bool bbm_requested = bbm.is_working();
 
     if ((over_power && !empty) || buffer_low) {
         // 需要放电补充 或 buffer 危急 → 启动
         bbm.start();
+        bbm_requested = bbm.is_enabled();
     } else if (full_charge) {
         // 满电且功率充足 → 转恒压浮充，退出功率控制
         compensation   = 0.0f;
@@ -143,9 +145,11 @@ void PowerManager::buffer_mode() {
     if (power_surplus && !full_charge) {
         // 有富余功率且未满电 → 启动充电
         bbm.start();
+        bbm_requested = bbm.is_enabled();
     } else if (empty) {
         // 电容接近耗尽 → 停机，零电流待机
         bbm.stop();
+        bbm_requested = false;
         compensation = 0.0f;
         cap_pwr_pid.reset();
         bbm.set_current_loop(bbm.v_c, 0.0f);
@@ -158,7 +162,7 @@ void PowerManager::buffer_mode() {
     }
 
     // 阶段3：目标功率计算（仅在 DC/DC 运行时执行）
-    if (bbm.is_working()) {
+    if (bbm_requested) {
         compute_and_apply_target_power();
     }
 }

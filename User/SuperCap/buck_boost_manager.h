@@ -89,6 +89,10 @@ public:
         return mode != OFF;
     }
 
+    bool is_enabled() {
+        return enable;
+    }
+
     bool is_voltage_control_loop() {
         return control_mode == V_LOOP;
     }
