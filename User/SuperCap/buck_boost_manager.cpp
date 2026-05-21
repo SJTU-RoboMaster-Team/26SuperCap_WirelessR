@@ -8,21 +8,21 @@
 
 extern RefreshFlag refresh_flag;
 
-namespace {
-float clamp_duty(float duty, float min_duty, float max_duty) {
-    return my_math::limit(duty, min_duty, max_duty);
-}
-}
-
+// 随着电容端电压逐渐增大，左桥下mos占空比逐渐减小，右桥下mos占空比逐渐增大
 void BuckBoostManager::handle() {
+    // 安全检查
     if (!safety_check()) {
         stop();
         return;
     }
 
+    // 限制目标电流
     target_current = my_math::limit_abs(target_current, config.limits.max_target_current);
+
+    // 确定工作模式(Buck/Boost/Buck-Boost/Off)
     mode_switcher();
 
+    // 软启动逻辑
     if (mode == OFF) {
         start_up_info.starting = false;
         start_up_info.started = false;
@@ -41,6 +41,7 @@ void BuckBoostManager::handle() {
         }
     }
 
+    // 执行不同控制模式
     switch (control_mode) {
         case V_LOOP:
             v_loop_control();
@@ -48,6 +49,12 @@ void BuckBoostManager::handle() {
         case I_LOOP:
             i_loop_control();
             break;
+        // case V_OUT_I_IN:
+        //     //            stop();
+        //     break;
+        // case I_OUT_V_IN:
+        //     //            stop();
+        //     break;
         case OPEN_LOOP:
         default:
             break;
@@ -80,101 +87,54 @@ void BuckBoostManager::switch_mode_reset() {
     ipid.reset();
 }
 
-float BuckBoostManager::get_mode_reference_voltage() const {
-    if (control_mode == V_LOOP) {
-        return target_voltage;
-    }
-    return filtered_v_c.val;
-}
-
-BuckBoostManager::Mode BuckBoostManager::decide_target_mode(float mode_v_in, float mode_v_ref) const {
-    switch (mode) {
-        case OFF:
-            if (mode_v_in < mode_v_ref + config.thresholds.buck_to_buckboost_gap) {
-                return BUCKBOOST;
-            }
-            return BUCK;
-
-        case BUCK:
-            if (mode_v_in < mode_v_ref + config.thresholds.buck_to_buckboost_gap) {
-                return BUCKBOOST;
-            }
-            return BUCK;
-
-        case BOOST:
-            if (mode_v_ref < mode_v_in + config.thresholds.boost_to_buckboost_gap) {
-                return BUCKBOOST;
-            }
-            return BOOST;
-
-        case BUCKBOOST:
-            if (mode_v_ref < mode_v_in - config.thresholds.buckboost_exit_gap_buck) {
-                return BUCK;
-            }
-            if (mode_v_ref > mode_v_in + config.thresholds.buckboost_exit_gap_boost) {
-                return BOOST;
-            }
-            return BUCKBOOST;
-
-        default:
-            return mode;
-    }
-}
-
 void BuckBoostManager::mode_switcher() {
     if (!enable) {
         mode = OFF;
-        pending_mode = OFF;
-        pending_mode_ticks = 0;
-        mode_stable_ticks = 0;
         return;
     }
 
-    const float mode_v_in = filtered_v_i.val;
-    const float mode_v_ref = get_mode_reference_voltage();
-    const Mode target_mode = decide_target_mode(mode_v_in, mode_v_ref);
+    // 状态机迟滞比较
+    // 防止频繁跳变，切换模式
+    // ReSharper disable once CppDFAUnreachableCode
+    switch (mode) {
+        case OFF:
+            // 启动时，根据电压差决定初始模式
+            if (v_i < target_voltage + config.thresholds.buck_to_buckboost_gap) {
+                // 输入电压不足以维持纯 Buck，进入 Buck-Boost 模式
+                mode = BUCKBOOST;
+            } else {
+                // 输入电压足够高，进入 Buck 模式
+                mode = BUCK;
+            }
+            break;
 
-    if (target_mode == mode) {
-        pending_mode = OFF;
-        pending_mode_ticks = 0;
-        if (mode_stable_ticks < UINT32_MAX) {
-            mode_stable_ticks++;
-        }
-        return;
-    }
+        case BUCK:
+            // Vin 降低或 Target 升高，导致压差不足 -> 切入 BuckBoost
+            if (v_i < target_voltage + config.thresholds.buck_to_buckboost_gap) {
+                mode = BUCKBOOST;
+            }
+            break;
 
-    if (mode != OFF && mode_stable_ticks < switching_config.min_mode_hold_ticks) {
-        pending_mode = OFF;
-        pending_mode_ticks = 0;
-        if (mode_stable_ticks < UINT32_MAX) {
-            mode_stable_ticks++;
-        }
-        return;
-    }
+        case BOOST:
+            // Vin 升高或 Target 降低，导致压差不足以维持纯 Boost -> 切入 BuckBoost
+            // Boost 模式下 Vout > Vin，所以这里是 target > Vin + gap
+            if (target_voltage < v_i + config.thresholds.boost_to_buckboost_gap) {
+                mode = BUCKBOOST;
+            }
+            break;
 
-    if (mode == OFF) {
-        mode = target_mode;
-        pending_mode = OFF;
-        pending_mode_ticks = 0;
-        mode_stable_ticks = 0;
-        return;
-    }
+        case BUCKBOOST:
+            if (target_voltage < v_i - config.thresholds.buckboost_exit_gap_buck) {
+                // Vout 显著低于 Vin -> 切入 Buck
+                mode = BUCK;
+            } else if (target_voltage > v_i + config.thresholds.buckboost_exit_gap_boost) {
+                // Vout 显著高于 Vin -> 切入 Boost
+                mode = BOOST;
+            }
+            break;
 
-    if (pending_mode != target_mode) {
-        pending_mode = target_mode;
-        pending_mode_ticks = 1;
-        return;
-    }
-
-    if (pending_mode_ticks < UINT32_MAX) {
-        pending_mode_ticks++;
-    }
-
-    if (pending_mode_ticks >= switching_config.confirm_ticks) {
-        mode = target_mode;
-        pending_mode = OFF;
-        pending_mode_ticks = 0;
-        mode_stable_ticks = 0;
+        default:
+            break;
     }
 }
 
@@ -192,9 +152,8 @@ void BuckBoostManager::v_loop_control() {
                 left_bridge.add_duty(-pid_out);
                 left_bridge.force_larger_than(config.limits.min_duty);
             } else {
-                left_bridge.set_duty(clamp_duty(1.0f - target_voltage / v_i,
-                                                config.limits.min_duty,
-                                                config.limits.max_duty));
+                // 前馈
+                left_bridge.set_duty(1.0f - target_voltage / v_i);
                 right_bridge.set_duty(config.limits.min_duty);
                 switch_mode_reset();
             }
@@ -205,16 +164,9 @@ void BuckBoostManager::v_loop_control() {
                 right_bridge.add_duty(pid_out);
                 right_bridge.force_larger_than(config.limits.min_duty);
             } else {
-                const float ff_duty = clamp_duty(1.0f - v_i / target_voltage,
-                                                 config.limits.min_duty,
-                                                 config.limits.max_duty);
-                if (last_mode == BUCKBOOST) {
-                    right_bridge.set_duty(clamp_duty(right_bridge.duty,
-                                                     config.limits.min_duty,
-                                                     config.limits.max_duty));
-                } else {
-                    right_bridge.set_duty(ff_duty);
-                }
+                // 前馈
+                // Vout = Vin / (1-D) -> D =  1- Vin/Vout
+                right_bridge.set_duty(1.0f - v_i / target_voltage);
                 left_bridge.set_duty(config.limits.min_duty);
                 switch_mode_reset();
             }
@@ -222,28 +174,18 @@ void BuckBoostManager::v_loop_control() {
 
         case BUCKBOOST:
             if (last_mode == BUCKBOOST) {
+                // 四开关同时工作，按比例分配 PID 输出
                 right_bridge.add_duty(0.5f * pid_out);
-                right_bridge.force_smaller_than(config.limits.max_buckboost_duty);
+                // 限制占空比，防止直通
+                right_bridge.force_smaller_than(config.limits.max_buckboost_duty); ////todo 参数可调
                 right_bridge.force_larger_than(config.limits.min_duty);
 
                 left_bridge.add_duty(-0.3f * pid_out);
-                left_bridge.force_smaller_than(config.limits.max_buckboost_duty);
+                left_bridge.force_smaller_than(config.limits.max_buckboost_duty); ////todo
                 left_bridge.force_larger_than(config.limits.min_duty);
             } else {
-                if (last_mode == BOOST) {
-                    right_bridge.set_duty(clamp_duty(right_bridge.duty,
-                                                     config.limits.min_duty,
-                                                     config.limits.max_buckboost_duty));
-                    left_bridge.set_duty(config.limits.min_duty);
-                } else if (last_mode == BUCK) {
-                    left_bridge.set_duty(clamp_duty(left_bridge.duty,
-                                                    config.limits.min_duty,
-                                                    config.limits.max_buckboost_duty));
-                    right_bridge.set_duty(config.limits.min_duty);
-                } else {
-                    right_bridge.set_duty(0.24f);
-                    left_bridge.set_duty(0.15f);
-                }
+                right_bridge.set_duty(0.24f); // 默认值
+                left_bridge.set_duty(0.15f);
                 switch_mode_reset();
             }
             break;
@@ -256,6 +198,10 @@ void BuckBoostManager::v_loop_control() {
 }
 
 void BuckBoostManager::i_loop_control() {
+    // suppose the voltage will be the target voltage
+
+    // 启动阶段限制电流，防止冲击
+    // ReSharper disable once CppDFAConstantConditions
     if (start_up_info.starting) {
         target_current = my_math::limit_abs(target_current, 5.0f);
     }
@@ -265,14 +211,16 @@ void BuckBoostManager::i_loop_control() {
     switch (mode) {
         case BUCK:
             if (last_mode == BUCK) {
+                // duty for left bridge lower mos
+                // when i_cap > target
+                // pid output a negative value, and we want duty to be larger, so there is a minus sign
                 left_bridge.add_duty(-0.3f * pid_out);
                 left_bridge.force_larger_than(config.limits.min_duty);
             } else {
+                // 前馈
                 debug.v_just_read = v_i;
-                debug.calc_res = 1.0f - target_voltage / v_i;
-                left_bridge.set_duty(clamp_duty(1.0f - target_voltage / v_i,
-                                                config.limits.min_duty,
-                                                config.limits.max_duty));
+                debug.calc_res = 1 - target_voltage / v_i;
+                left_bridge.set_duty(1.0f - target_voltage / v_i);
                 right_bridge.set_duty(config.limits.min_duty);
                 switch_mode_reset();
             }
@@ -283,16 +231,8 @@ void BuckBoostManager::i_loop_control() {
                 right_bridge.add_duty(pid_out);
                 right_bridge.force_larger_than(config.limits.min_duty);
             } else {
-                const float ff_duty = clamp_duty(1.0f - v_i / target_voltage,
-                                                 config.limits.min_duty,
-                                                 config.limits.max_duty);
-                if (last_mode == BUCKBOOST) {
-                    right_bridge.set_duty(clamp_duty(right_bridge.duty,
-                                                     config.limits.min_duty,
-                                                     config.limits.max_duty));
-                } else {
-                    right_bridge.set_duty(ff_duty);
-                }
+                // 前馈
+                right_bridge.set_duty(1.0f - v_i / target_voltage);
                 left_bridge.set_duty(config.limits.min_duty);
                 switch_mode_reset();
             }
@@ -300,16 +240,24 @@ void BuckBoostManager::i_loop_control() {
 
         case BUCKBOOST:
             if (last_mode == BUCKBOOST) {
+                // PID 分配
                 right_bridge.add_duty(0.15f * pid_out);
                 right_bridge.force_smaller_than(config.limits.max_buckboost_duty);
                 right_bridge.force_larger_than(config.limits.min_duty);
 
+                // 启动时的特殊限幅
+                // ReSharper disable once CppDFAConstantConditions
                 float left_limit = start_up_info.starting ? 0.12f : config.limits.max_buckboost_duty;
                 left_bridge.add_duty(-0.2f * pid_out);
                 left_bridge.force_smaller_than(left_limit);
                 left_bridge.force_larger_than(config.limits.min_duty);
             } else {
                 if (last_mode == OFF) {
+                    // 软启动逻辑
+                    // 现在的问题是刚启动电流放出的太厉害
+                    // 从左往右看，如果要电容充电，那就升高电压，boost，放电则需要降低电压
+                    // 所以如果启动电流放的太厉害，那就代表boost太弱，应该更多boost以及更少buck
+                    // 反映到下面的代码就是左半桥初始占空比小一点，算出来的升高ratio大一点
                     float ratio = v_c / (v_i * 0.8f);
                     float right_d = 1.0f - 1.0f / ratio;
                     if (right_d < 0) right_d = 0.1f;
@@ -317,16 +265,6 @@ void BuckBoostManager::i_loop_control() {
 
                     left_bridge.set_duty(0.12f);
                     right_bridge.set_duty(right_d);
-                } else if (last_mode == BOOST) {
-                    right_bridge.set_duty(clamp_duty(right_bridge.duty,
-                                                     config.limits.min_duty,
-                                                     config.limits.max_buckboost_duty));
-                    left_bridge.set_duty(config.limits.min_duty);
-                } else if (last_mode == BUCK) {
-                    left_bridge.set_duty(clamp_duty(left_bridge.duty,
-                                                    config.limits.min_duty,
-                                                    config.limits.max_buckboost_duty));
-                    right_bridge.set_duty(config.limits.min_duty);
                 } else {
                     right_bridge.add_duty(0.12f);
                     left_bridge.add_duty(0.12f);
@@ -342,3 +280,11 @@ void BuckBoostManager::i_loop_control() {
             break;
     }
 }
+
+// void BuckBoostManager::v_out_i_in_control() {
+//
+// }
+//
+// void BuckBoostManager::i_out_v_in_control() {
+//
+// }

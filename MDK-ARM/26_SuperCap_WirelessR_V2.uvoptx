@@ -154,13 +154,6 @@
         </SetRegEntry>
       </TargetDriverDllRegistry>
       <Breakpoint/>
-      <WatchWindow1>
-        <Ww>
-          <count>0</count>
-          <WinNumber>1</WinNumber>
-          <ItemText>mp4201_dev</ItemText>
-        </Ww>
-      </WatchWindow1>
       <WatchWindow2>
         <Ww>
           <count>0</count>
@@ -186,11 +179,6 @@
           <count>4</count>
           <WinNumber>2</WinNumber>
           <ItemText>set_voltage</ItemText>
-        </Ww>
-        <Ww>
-          <count>5</count>
-          <WinNumber>2</WinNumber>
-          <ItemText>pm</ItemText>
         </Ww>
       </WatchWindow2>
       <Tracepoint>
