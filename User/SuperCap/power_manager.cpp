@@ -213,19 +213,20 @@ void PowerManager::compute_and_apply_target_power() {
     // 期望功率差 = 功率上限 - 底盘实际功率 + buffer 补偿
     //   pwr_gap > 0: 功率有余 → 充电
     //   pwr_gap < 0: 功率不足 → 放电
+    static float last_pwr_gap = 0.0f;
     float pwr_gap = power_limit - filtered_out_pwr.val + compensation;
     if (is_wireless_override_active()) {
         pwr_gap -= 100;
     }
 
     // 滞后补偿
+    float ff_pwr = 0.0f;
     if (follow_trend_estimator.trend == FollowTrendEstimator::LAGGING) {
-        const float chassis_pwr_pid_out = chassis_pwr_pid.update(pwr_gap, target_cap_pwr);
-        const float ff_out = 0.1f * (target_cap_pwr);
-        target_cap_pwr += (chassis_pwr_pid_out + ff_out);
-    } else {
-        target_cap_pwr += chassis_pwr_pid.update(pwr_gap, target_cap_pwr);
+        ff_pwr = 0.1f * (pwr_gap - last_pwr_gap);
     }
+    last_pwr_gap = pwr_gap;
+
+    target_cap_pwr += chassis_pwr_pid.update(pwr_gap, target_cap_pwr) + ff_pwr;
 
     // 目标功率限幅
     if (bbm.start_up_info.starting) {
@@ -237,8 +238,8 @@ void PowerManager::compute_and_apply_target_power() {
     }
 
     // 功率外环 → 电流内环：target_i = 当前设定 + PID(P_target, P_actual)
-    const float filtered_v_c_val = my_math::limit(bbm.filtered_v_c.val, 0.1f, 30.0f);
-    float target_i = target_cap_pwr / filtered_v_c_val + cap_pwr_pid.update(target_cap_pwr, filtered_cap_pwr.val);
+    const float safe_v_c_val = my_math::limit(bbm.filtered_v_c.val, 5.0f, 30.0f);
+    float target_i = target_cap_pwr / safe_v_c_val + cap_pwr_pid.update(target_cap_pwr, filtered_cap_pwr.val);
 
     // 若控制严重滞后且处于 Buck 充电模式，升级至 BuckBoost 以提升响应带宽
     if (follow_trend_estimator.trend == FollowTrendEstimator::LAGGING
