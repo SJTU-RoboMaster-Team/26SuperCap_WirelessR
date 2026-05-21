@@ -236,11 +236,6 @@ void PowerManager::compute_and_apply_target_power() {
         target_cap_pwr = my_math::limit(target_cap_pwr, max_releasing_pwr, max_charging_pwr);
     }
 
-    // 电容耗尽时请求微量充电，维持系统可用
-    if (empty) {
-        target_cap_pwr = 10.0f;
-    }
-
     // 功率外环 → 电流内环：target_i = 当前设定 + PID(P_target, P_actual)
     const float filtered_v_c_val = my_math::limit(bbm.filtered_v_c.val, 0.1f, 30.0f);
     float target_i = target_cap_pwr / filtered_v_c_val + cap_pwr_pid.update(target_cap_pwr, filtered_cap_pwr.val);
