@@ -113,11 +113,11 @@ public:
     float target_voltage = 18; // V
     float target_current = 0;  // A
 
-    LowPassFilter filtered_v_c = LowPassFilter(0.f, 0.01);
-    LowPassFilter filtered_i_c = LowPassFilter(0.f, 0.01);
-    LowPassFilter filtered_v_i = LowPassFilter(0.f, 0.01);
-    LowPassFilter filtered_i_i = LowPassFilter(0.f, 0.01);
-    LowPassFilter filtered_i_o = LowPassFilter(0.f, 0.01);
+    LowPassFilter filtered_v_c = LowPassFilter(0.f, 0.05);
+    LowPassFilter filtered_i_c = LowPassFilter(0.f, 0.03);
+    LowPassFilter filtered_v_i = LowPassFilter(0.f, 0.05);
+    LowPassFilter filtered_i_i = LowPassFilter(0.f, 0.03);
+    LowPassFilter filtered_i_o = LowPassFilter(0.f, 0.03);
 
     enum Mode {
         BUCK,
