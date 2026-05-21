@@ -218,10 +218,11 @@ void PowerManager::compute_and_apply_target_power() {
         pwr_gap -= 100;
     }
 
-    // 滞后补偿：若电容功率跟随存在滞后，融合当前测量值以平滑控制
+    // 滞后补偿
     if (follow_trend_estimator.trend == FollowTrendEstimator::LAGGING) {
-        float smoothed = pwr_gap * 0.3f + filtered_cap_pwr.val * 0.7f;
-        target_cap_pwr += chassis_pwr_pid.update(smoothed, target_cap_pwr);
+        const float chassis_pwr_pid_out = chassis_pwr_pid.update(pwr_gap, target_cap_pwr);
+        const float ff_out = 0.1f * (target_cap_pwr);
+        target_cap_pwr += (chassis_pwr_pid_out + ff_out);
     } else {
         target_cap_pwr += chassis_pwr_pid.update(pwr_gap, target_cap_pwr);
     }
@@ -241,7 +242,8 @@ void PowerManager::compute_and_apply_target_power() {
     }
 
     // 功率外环 → 电流内环：target_i = 当前设定 + PID(P_target, P_actual)
-    float target_i = bbm.target_current + cap_pwr_pid.update(target_cap_pwr, filtered_cap_pwr.val);
+    const float filtered_v_c_val = my_math::limit(bbm.filtered_v_c.val, 0.1f, 30.0f);
+    float target_i = target_cap_pwr / filtered_v_c_val + cap_pwr_pid.update(target_cap_pwr, filtered_cap_pwr.val);
 
     // 若控制严重滞后且处于 Buck 充电模式，升级至 BuckBoost 以提升响应带宽
     if (follow_trend_estimator.trend == FollowTrendEstimator::LAGGING
