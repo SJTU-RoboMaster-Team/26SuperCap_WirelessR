@@ -234,7 +234,7 @@ void PowerManager::compute_and_apply_target_power() {
     }
 
     // 功率外环 → 电流内环：target_i = 当前设定 + PID(P_target, P_actual)
-    const float safe_v_c_val = my_math::limit(bbm.filtered_v_c.val, 5.0f, 30.0f);
+    const float safe_v_c_val = my_math::limit(bbm.filtered_v_c.val, 5.0f, 27.0f);
     float target_i = target_cap_pwr / safe_v_c_val + cap_pwr_pid.update(target_cap_pwr, filtered_cap_pwr.val);
 
     // 若控制严重滞后且处于 Buck 充电模式，升级至 BuckBoost 以提升响应带宽
