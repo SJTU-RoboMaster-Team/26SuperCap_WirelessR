@@ -233,7 +233,7 @@ void PowerManager::compute_and_apply_target_power() {
         target_cap_pwr = my_math::limit(target_cap_pwr, max_releasing_pwr, max_charging_pwr);
     }
 
-    // 功率外环 → 电流内环：target_i = 当前设定 + PID(P_target, P_actual)
+    // 功率外环 → 电流内环：target_i = target_cap_pwr/限幅后的v_c + PID(P_target, P_actual)
     const float safe_v_c_val = my_math::limit(bbm.filtered_v_c.val, 5.0f, 27.0f);
     float target_i = target_cap_pwr / safe_v_c_val + cap_pwr_pid.update(target_cap_pwr, filtered_cap_pwr.val);
 
