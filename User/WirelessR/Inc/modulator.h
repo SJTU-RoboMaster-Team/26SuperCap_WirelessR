@@ -14,6 +14,7 @@
 #define DATA_LEN 9
 #define START_SIGN 0x1FE
 #define STOP_SIGN 0x00
+#define MODULATION_PERIOD 42500
 
 #ifndef MOD_GPIO_PORT
     #define MOD_GPIO_PORT GPIOA
@@ -28,6 +29,14 @@ struct WPTMsg {
 
 class Modulator {
 public:
+    // symbolize state of last level, which means the level in a new period should be !level_state_ (revert level each period event)
+    enum LevelState {
+        LOW,
+        HIGH
+    };
+    LevelState last_level_state_; // level of the second half of last period
+    LevelState next_level_state_; // level of the first half of this period
+
     enum ModulatorState { START, STOP, BUSY, IDLE, LOCK } modulator_state_ = BUSY;
 
     enum ModulatorStatus { OK, ERROR, TIMEOUT };
@@ -38,8 +47,6 @@ public:
 
     // 构造函数移除了 Encoder 参数，因为已经内部整合
     Modulator(FreqMeter& freq_meter): freq_meter_(freq_meter) {
-        bit_index_ = 0;
-        half_bit_ = 0;
         first_ = true;
         modulator_state_ = START;
         data_frame_ = 0;
@@ -48,8 +55,7 @@ public:
     FreqMeter& freq_meter_;
 
     // 状态控制变量
-    uint8_t bit_index_; // 当前进行到一帧中的第几个位 (0 ~ FRAME_LEN-1)
-    uint8_t half_bit_;  // 当前是前半周期还是后半周期 (0: 前半部分, 1: 后半部分)
+    uint8_t index_;
     uint32_t data_frame_ = 0;
     bool first_;
 
@@ -60,18 +66,16 @@ public:
 
     void start();
     void stop();
-    void handle(); // 必须以 4kHz 的频率放入定时器中断调用
-
+    void handle();
     void reset() {
         first_ = true;
-        bit_index_ = 0;
-        half_bit_ = 0;
+        index_ = 0;
         data_frame_ = 0;
-        last_pin_state_ = GPIO_PIN_RESET;
+        last_level_state_ = LOW;
+        next_level_state_ = LOW;
     }
 
 private:
-    GPIO_PinState last_pin_state_ = GPIO_PIN_RESET;
 
     void update_wpt_msg();
     void encode();

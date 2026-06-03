@@ -71,8 +71,6 @@ void Error_Handler(void);
 #define IN_C_GPIO_Port GPIOB
 #define CAP_V_Pin GPIO_PIN_15
 #define CAP_V_GPIO_Port GPIOB
-#define ASK_Pin GPIO_PIN_8
-#define ASK_GPIO_Port GPIOA
 #define CAP_C_Pin GPIO_PIN_9
 #define CAP_C_GPIO_Port GPIOA
 #define LED_PIN_Pin GPIO_PIN_15

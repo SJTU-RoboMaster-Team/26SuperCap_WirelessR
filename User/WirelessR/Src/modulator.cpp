@@ -4,6 +4,7 @@
 //
 
 #include "../Inc/modulator.h"
+#include "hrtim.h"
 
 // 引入外部 MP4201 设备句柄获取数据
 extern MP4201_Handle_t mp4201_dev;
@@ -51,68 +52,69 @@ Modulator::ModulatorStatus Modulator::set_next_frame() {
 }
 
 void Modulator::start() {
-    modulator_state_ = BUSY;
-    reset();
+    HAL_HRTIM_WaveformOutputStart(&hhrtim1,HRTIM_OUTPUT_TA1);
 }
 
 void Modulator::stop() {
     modulator_state_ = STOP;
-    // 停止时拉低负载调制管脚，避免消耗额外功率
-    HAL_GPIO_WritePin(MOD_GPIO_PORT, MOD_PIN, GPIO_PIN_RESET);
+    HAL_HRTIM_WaveformOutputStop(&hhrtim1,HRTIM_OUTPUT_TA1);
 }
 
-// 核心调制函数：4kHz 调用（250us 周期）
 void Modulator::handle() {
-    if (modulator_state_ == STOP) {
-        return;
-    }
-
-    if (first_) {
+    if (index_ == FRAME_LEN || first_) {
+        index_ = 0;
         first_ = false;
-        bit_index_ = 0;
-        half_bit_ = 0;
         if (set_next_frame() != OK) {
             stop();
             return;
         }
     }
 
-    /*
-     * QI 协议双相标记编码 (Biphase Mark Coding)
-     * 基带速率 2kbps，即 1个 Bit 周期为 500us
-     * handle() 以 4kHz 运行，即每 250us 触发一次 (代表半个 Bit 周期)
-     */
-    static bool last_pin_state = GPIO_PIN_SET;
-    if (half_bit_ == 0) {
-        // [阶段 1: 位的开始 (0ms)]
-        // 在每一位的开始，必须翻转一次电平
-        HAL_GPIO_WritePin(MOD_GPIO_PORT, MOD_PIN, (GPIO_PinState)!last_pin_state);
-        last_pin_state = !last_pin_state;
-        half_bit_ = 1;
-    } else {
-        // [阶段 2: 位的中间 (250us)]
-        uint8_t current_bit = (data_frame_ >> (FRAME_LEN - 1 - bit_index_)) & 0x01;
+    start();
 
-        if (current_bit == 1) {
-            // 如果数据位是 '1'，位中间再翻转一次
-            HAL_GPIO_WritePin(MOD_GPIO_PORT, MOD_PIN, (GPIO_PinState)!last_pin_state);
-            last_pin_state = !last_pin_state;
+    switch (last_level_state_) {
+        // end with low, start with high
+        case LOW: {
+            next_level_state_ = HIGH;
+            __HAL_HRTIM_SETCOMPARE(&hhrtim1, HRTIM_TIMERINDEX_TIMER_A, HRTIM_COMPAREUNIT_1, 0);
+            break;
         }
-        // 如果数据位是 '0'，位中间保持原电平，不做翻转动作
-
-        // 进入下一位
-        half_bit_ = 0;
-        bit_index_++;
-
-        // 一帧 (20 bits) 发送完成判定
-        if (bit_index_ == FRAME_LEN) {
-            bit_index_ = 0;
-            freq_meter_.update();
-
-            // 直接准备并装载下一帧。如果需要包间空闲期(Preamble gap)，可在这里引入额外状态延时
-            if (set_next_frame() != OK) {
-                stop();
+        // end with high, start with low
+        case HIGH: {
+            next_level_state_ = LOW;
+            __HAL_HRTIM_SETCOMPARE(&hhrtim1, HRTIM_TIMERINDEX_TIMER_A, HRTIM_COMPAREUNIT_3, 0);
+            break;
+        }
+    }
+    switch ((data_frame_ >> (FRAME_LEN - 1 - index_)) & 0x01) { // modulation output is the same sequence as data_frame_
+        case 0: {
+            if (next_level_state_ == HIGH) {
+                __HAL_HRTIM_SETCOMPARE(&hhrtim1, HRTIM_TIMERINDEX_TIMER_A, HRTIM_COMPAREUNIT_3, MODULATION_PERIOD + 1);
+                // don't revert level this period
+                last_level_state_ = HIGH;
+            } else {
+                __HAL_HRTIM_SETCOMPARE(&hhrtim1, HRTIM_TIMERINDEX_TIMER_A, HRTIM_COMPAREUNIT_1, MODULATION_PERIOD + 1);
+                // don't revert level this period
+                last_level_state_ = LOW;
             }
+            break;
         }
+        case 1: {
+            if (next_level_state_ == HIGH) {
+                __HAL_HRTIM_SETCOMPARE(&hhrtim1, HRTIM_TIMERINDEX_TIMER_A, HRTIM_COMPAREUNIT_3, MODULATION_PERIOD / 2);
+                // revert level this period
+                last_level_state_ = LOW;
+            } else {
+                __HAL_HRTIM_SETCOMPARE(&hhrtim1, HRTIM_TIMERINDEX_TIMER_A, HRTIM_COMPAREUNIT_1, MODULATION_PERIOD / 2);
+                // revert level this period
+                last_level_state_ = HIGH;
+            }
+            break;
+        }
+    }
+    index_++;
+    // data_frame_ >>= 1;
+    if (index_ == FRAME_LEN) {
+        freq_meter_.update();
     }
 }
