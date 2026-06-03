@@ -7,10 +7,12 @@
 # CLion
 .idea/
 
-## MDK-ARM
-#.MDK-ARM
-DebugConfig
-#*uvguix*
+# MDK-ARM
+.MDK-ARM
+DebugConfig/
+RTE/
+
+*uvguix*
 
 *.o
 *.d
@@ -22,6 +24,7 @@ DebugConfig
 *.map
 *.htm
 *.lnp
+*.sct
 *.dep
 *.lst
 *.scvd
