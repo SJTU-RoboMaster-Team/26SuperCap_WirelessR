@@ -9,6 +9,8 @@
 #include "modulator.h"
 #include "../../SuperCap/power_manager.h"
 #include "../../config.h"
+
+#define WCM_ONE_MILLISECOND MAIN_CONTROL_LOOP_FREQ_HZ / 1000
 /**
  * @brief 无线充电管理器
  *
