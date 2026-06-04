@@ -283,11 +283,12 @@ void PowerManager::handle_wireless_override() {
     // 若主机下发命令但最终未去充电区，超电侧不做超时处理，由主机负责取消。
 
     const bool override_active = is_wireless_override_active();
-    // 检测 wireless_active 下降沿（离开充电区）
-    if (!wireless_active && last_wireless_active_) {
+
+    // 丢失发射端联系（离开充电区）
+    if (!transmitter_detected_ && last_transmitter_detected_) {
         clear_wireless_state();
     }
-    last_wireless_active_ = wireless_active;
+    last_transmitter_detected_ = transmitter_detected_;
 
     if (!override_active && last_wireless_override_active) {
         clear_wireless_state();

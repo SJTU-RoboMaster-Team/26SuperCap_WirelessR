@@ -4,7 +4,8 @@
 
 #include "../Inc/wireless_charge_manager.h"
 
-volatile bool vin_ok;
+volatile bool transmitter_detected;
+volatile bool charging_allowance;
 
 void WirelessChargeManager::handle() {
     //    读取无线充输入电压，更新施密特触发器
@@ -13,55 +14,60 @@ void WirelessChargeManager::handle() {
     if (mp4201_.is_connected) {
         mp4201_.lost_connection_tick = 0;
         float vin = mp4201_.vin_meas;
-        vin_ok = vin_trigger_.update(vin);
+        transmitter_detected = transmitter_detector_smtrg_.update(vin);
+        charging_allowance = charge_allow_smtrg_.update(vin);
     } else {
-        // 通信掉线期间维持原状态 (由 vin_trigger_.state 保存)
-        vin_ok = vin_trigger_.state;
         mp4201_.lost_connection_tick++;
         if (mp4201_.lost_connection_tick >= 200 * WCM_ONE_MILLISECOND) { // 100ms timeout
-            vin_ok = false; // force turn off
+            transmitter_detected = false;                                // force turn off
+            charging_allowance = false;
+        } else {
+            // 通信掉线期间维持原状态 (由 vin_trigger_.state 保存)
+            transmitter_detected = transmitter_detector_smtrg_.state;
+            charging_allowance = charge_allow_smtrg_.state;
         }
     }
 
     // 模式切换
-    if (vin_ok && !wireless_active_) {
+    if (transmitter_detected && !transmitter_detected_) {
         enter_wireless_mode();
-    } else if (!vin_ok && wireless_active_) {
+    } else if (!transmitter_detected && transmitter_detected_) {
         exit_wireless_mode();
     }
 
     // 更新实时功率
     wireless_in_power = mp4201_.vout_meas * mp4201_.iout_meas; //TODO: 替换成滤波后的值
 
-    // 4. 无线充模式下的能量统计
-    if (wireless_active_) {
-        energy_accounting();
-    }
-
     // 同步标志位给 PM
-    pm_.wireless_active = wireless_active_;
-
+    pm_.transmitter_detected_ = transmitter_detected_;
+    if (!transmitter_detected_) {
+        charging_allowance = false;
+    }
+    pm_.charge_allowed_ = charge_allowed_ = charging_allowance;
     // main charging loop
     // 将启动 MP4201 权限转移给 PM
-    if (wireless_active_) {
-        if (pm_.allow_wireless_mp4201_start()) {
-            if (!mp4201_started_) {
-                MP4201_SetCP_Target(&mp4201_, 120, 0, 0.005f);
-                MP4201_Enable(&mp4201_, 1);
-                mp4201_started_ = true;
-            }
-        } else {
-            if (mp4201_started_) {
-                MP4201_Enable(&mp4201_, 0);
-                mp4201_started_ = false;
-            }
+    if (pm_.allow_wireless_mp4201_start()) {
+        if (!mp4201_started_) {
+            MP4201_SetCP_Target(&mp4201_, 120, 0, 0.005f);
+            MP4201_Enable(&mp4201_, 1);
+            mp4201_started_ = true;
         }
+    } else {
+        if (mp4201_started_) {
+            MP4201_Enable(&mp4201_, 0);
+            mp4201_started_ = false;
+        }
+    }
+
+    // 无线充模式下的能量统计
+    if (charge_allowed_) {
+        energy_accounting();
     }
 }
 
 void WirelessChargeManager::enter_wireless_mode() {
     // 仅设置标志位，无线充在线，默认关闭4201
-    wireless_active_ = true;
+    transmitter_detected_ = true;
 
     MP4201_Enable(&mp4201_, 0);
 
@@ -69,7 +75,7 @@ void WirelessChargeManager::enter_wireless_mode() {
 }
 
 void WirelessChargeManager::exit_wireless_mode() {
-    wireless_active_ = false;
+    transmitter_detected_ = false;
 
     MP4201_Enable(&mp4201_, 0);
 
@@ -83,8 +89,8 @@ void WirelessChargeManager::energy_accounting() {
     //   输入 = 无线充提供的功率 (MP4201)
     //   输出 = BuckBoost 向 chassis 输出的功率
     //   差值累积达到阈值后，给 chassis 发放能量 bonus
-    float wr_in_pwr = wireless_in_power;                // 无线充输入功率
-    float chassis_pwr = pm_.filtered_out_pwr.val;       // BuckBoost → chassis 输出功率
+    float wr_in_pwr = wireless_in_power;          // 无线充输入功率
+    float chassis_pwr = pm_.filtered_out_pwr.val; // BuckBoost → chassis 输出功率
 
     // 累积能量 (J = W * s)
     supercap_in_energy += wr_in_pwr * config.dt;

@@ -50,13 +50,15 @@
 
 // WR_Charge_Manager_Parameters
 #define WR_PWR_LIMIT                        120.0f // 无线充最大功率
-#define WR_CHARGE_VIN_UPPER_THRESHOLD       15.0f  // 无线充激活上阈值 (V)
-#define WR_CHARGE_VIN_LOWER_THRESHOLD       12.0f  // 无线充退出下阈值 (V)
+#define WR_CHARGE_TRANSMITTER_DETECT_VIN_UPPER_THRESHOLD       12.0f  // 无线充探测上阈值 (V)
+#define WR_CHARGE_TRANSMITTER_DETECT_VIN_LOWER_THRESHOLD       3.0f  // 无线充探测下阈值 (V)
+#define WR_CHARGE_CHARGE_ALLOWANCE_VIN_UPPER_THRESHOLD       30.0f  // 无线充允许充电上阈值 (V)
+#define WR_CHARGE_CHARGE_ALLOWANCE_VIN_LOWER_THRESHOLD       12.0f  // 无线充允许充电下阈值 (V)
 #define WR_CHARGE_TARGET_VOLTAGE            26.0f  // 无线充模式下超电目标电压 (V)
 #define WR_CHARGE_MAX_CURRENT               5.8f   // 无线充最大充电电流 (A)
 #define WR_CHARGE_ENERGY_PER_BONUS          1.0f   // 每 N(J) 能量差触发一次 bonus
 #define WR_CHARGE_BONUS_PER_JOULE           8      // 每次 bonus 增加的底盘能量
 // main_control_loop 被 HRTIM master 以 25kHz 触发，wcm.handle() 与之同频
-#define MAIN_CONTROL_LOOP_FREQ_HZ           25000.0f
+#define MAIN_CONTROL_LOOP_FREQ_HZ           25000
 #define WR_CHARGE_LOOP_DT                   (1.0f / MAIN_CONTROL_LOOP_FREQ_HZ)
 #endif //INC_26_SUPERCAP_WIRELESSR_V2_CONFIG_H
