@@ -87,7 +87,7 @@ void CAN_control_loop() {
  so loop_flag is written in end of bbm.handle()
  when referee disconnected, loop_flag is set true to keep program on
 */
-float set_voltage = 6; // for debug purpose
+float set_voltage = 10; // for debug purpose
 void main_control_loop() {
 
     static uint16_t loop_cnt = 0;
@@ -105,7 +105,7 @@ void main_control_loop() {
 
     bbm.update_adc_data(
         cali_estimator.calibrate_in_voltage((float)adc_buffer.v_in * V_IN_TO_FLOAT) - 0.1f,
-        cali_estimator.calibrate_cap_voltage((float)adc_buffer.v_c * V_C_TO_FLOAT) - 0.2f,
+        cali_estimator.calibrate_cap_voltage((float)adc_buffer.v_c * V_C_TO_FLOAT),
         cali_estimator.calibrate_in_current((float)adc_buffer.i_in * I_IN_TO_FLOAT),
         cali_estimator.calibrate_out_current((float)adc_buffer.i_o * I_O_TO_FLOAT),
         cali_estimator.calibrate_cap_current((float)adc_buffer.i_c * I_C_TO_FLOAT)
