@@ -178,13 +178,25 @@ void PowerManager::compute_buffer_compensation() {
         buffer_surplus = (int32_t)((float)buffer_surplus * 0.25f);
     }
 
-    // 动态 PID 增益：底盘功率越大，响应越激进
-    if      (filtered_out_pwr.val > 250.0f) referee_buffer_pid.kp = 6.5f;
-    else if (filtered_out_pwr.val > 150.0f) referee_buffer_pid.kp = 3.5f;
-    else                                     referee_buffer_pid.kp = 1.5f;
+    // 动态 PID 增益：综合底盘功率和 buffer 偏差，取两者需求的最大增益
+    float power_based_kp;
+    if      (filtered_out_pwr.val > 250.0f) power_based_kp = 15.0f;
+    else if (filtered_out_pwr.val > 150.0f) power_based_kp = 7.0f;
+    else                                     power_based_kp = 3.0f;
+
+    float buffer_based_kp;
+    if      (buffer_surplus < -30.0f) buffer_based_kp = 10.0f;
+    else if (buffer_surplus < -15.0f) buffer_based_kp = 6.0f;
+    else if (buffer_surplus < -7.0f)  buffer_based_kp = 5.0f;
+    else                              buffer_based_kp = 3.0f;
+
+    referee_buffer_pid.kp = (buffer_surplus < -7.0f)
+                                ? (buffer_based_kp > power_based_kp ? buffer_based_kp : power_based_kp)
+                                : power_based_kp;
 
     // 施密特触发器判断偏差是否超出死区（阈值 3J/7J）
-    buffer_far_from_target.update(buffer_surplus);
+    uint16_t surplus_abs = (uint16_t)(buffer_surplus < 0 ? -buffer_surplus : buffer_surplus);
+    buffer_far_from_target.update(surplus_abs);
     referee_buffer_pid.update(0.0f, (float)buffer_surplus);
 
     // 仅在未满电或 buffer 危急时计算补偿

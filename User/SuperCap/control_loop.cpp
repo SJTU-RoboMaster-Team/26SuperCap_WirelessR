@@ -44,7 +44,7 @@ PID iout_pid(0.005, 0.0, 0.0, 0.02, 0.01); // 10uH 其软无比
 PID cap_pwr_pid(0.0003, 0, 0.05, 0, 0.05);
 PID chassis_pwr_pid(0.008, 0, 0.0f, 0, 10);
 // PID referee_buffer_pid(1.5f, 0.0007, 0.00, 10.0f/0.0007f, 150);
-PID referee_buffer_pid(1.5f, 0.0001, 0.01, 10000.0f, 150);
+PID referee_buffer_pid(3.0f, 0.001, 0.01, 200.0f, 150);
 PID wireless_recharge_pid(0.005f, 0.0001f,0.05f,0.0f,WR_CHARGE_MAX_CURRENT);
 
 BuckBoostManager bbm(left, right, vout_pid, iout_pid);
