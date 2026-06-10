@@ -117,6 +117,8 @@ public:
     LowPassFilter filtered_out_pwr = LowPassFilter(0, 0.05);
     LowPassFilter filtered_in_pwr = LowPassFilter(0, 0.05);
     LowPassFilter filtered_cap_pwr = LowPassFilter(0, 0.05);
+    LowPassFilter filtered_kp = LowPassFilter(3.0, 0.005);    // 一级滤波
+    LowPassFilter filtered_kp_2 = LowPassFilter(3.0, 0.005);  // 二级滤波，级联实现零初始斜率S曲线 总建立时间 40ms
 
 private:
     PID& cap_pwr_pid;

@@ -187,13 +187,13 @@ void PowerManager::compute_buffer_compensation() {
     float buffer_based_kp;
     if      (buffer_surplus < -30) buffer_based_kp = 10.0f;
     else if (buffer_surplus < -15) buffer_based_kp = 6.0f;
-    else if (buffer_surplus < -7)  buffer_based_kp = 5.0f;
+    else if (buffer_surplus < -7)  buffer_based_kp = 4.0f;
     else                              buffer_based_kp = 3.0f;
 
-    float new_referee_buffer_pid_kp = (buffer_surplus < -7)
-                                ? (buffer_based_kp > power_based_kp ? buffer_based_kp : power_based_kp)
-                                : power_based_kp;
-    referee_buffer_pid.kp = new_referee_buffer_pid_kp * 0.005f + referee_buffer_pid.kp * 0.995f;
+    float raw_kp = (buffer_surplus < -7)
+                       ? (buffer_based_kp > power_based_kp ? buffer_based_kp : power_based_kp)
+                       : power_based_kp;
+    referee_buffer_pid.kp = filtered_kp_2.update(filtered_kp.update(raw_kp));
     // 施密特触发器判断偏差是否超出死区（阈值 3J/7J）
     uint16_t surplus_abs = (uint16_t)(buffer_surplus < 0 ? -buffer_surplus : buffer_surplus);
     buffer_far_from_target.update(surplus_abs);
