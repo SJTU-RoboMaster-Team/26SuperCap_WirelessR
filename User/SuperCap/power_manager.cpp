@@ -180,7 +180,9 @@ void PowerManager::compute_buffer_compensation() {
 
     // 动态 PID 增益：综合底盘功率和 buffer 偏差，取两者需求的最大增益
     float power_based_kp;
-    if      (filtered_out_pwr.val > 250.0f) power_based_kp = 15.0f;
+    // buffer 有盈余时无急迫性，功率增益不应推高 Kp 鼓励充电，否则会削弱本该释放的放电功率
+    if (buffer_surplus >= 0 ) power_based_kp = 3.0f;
+    else if (filtered_out_pwr.val > 250.0f) power_based_kp = 15.0f;
     else if (filtered_out_pwr.val > 150.0f) power_based_kp = 7.0f;
     else                                     power_based_kp = 3.0f;
 
@@ -205,9 +207,10 @@ void PowerManager::compute_buffer_compensation() {
         //   buffer_surplus < 0 (buffer不足) → PID输出 > 0 → compensation < 0 → 电容多放电
         //   buffer_surplus > 0 (buffer过多) → PID输出 < 0 → compensation > 0 → 电容多充电
         // 偏差大时用完整输出，接近目标时仅用积分项以减少抖动
-        compensation = (buffer_far_from_target.state)
-                     ? (-referee_buffer_pid.get_output())
-                     : (-referee_buffer_pid.get_iout());
+        // compensation = (buffer_far_from_target.state)
+        //              ? (-referee_buffer_pid.get_output())
+        //              : (-referee_buffer_pid.get_iout());
+        compensation = -referee_buffer_pid.get_output();
     } else {
         compensation = 0.0f;
     }
