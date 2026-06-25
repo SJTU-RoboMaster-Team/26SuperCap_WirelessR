@@ -17,9 +17,9 @@ public:
     void reset() {
         loop_flag_ = false; // 只监控control_loop是否进入死循环
     };
-    bool isAllflagtrue() {
+    [[nodiscard]] bool isAllflagtrue() const {
         // HAL_OK = 0X00U
-        if (!can_flag_ && loop_flag_) return true;
+        if (loop_flag_) return true;
         else return false;
     }
 };
