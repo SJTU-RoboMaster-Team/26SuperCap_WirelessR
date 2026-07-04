@@ -205,6 +205,10 @@ void PowerManager::compute_buffer_compensation() {
     }
 }
 
+// for test purpose
+float test_max_releasing_pwr = 0;
+float test_max_charging_pwr = 0;
+
 void PowerManager::compute_and_apply_target_power() {
     // 期望功率差 = 功率上限 - 底盘实际功率 + buffer 补偿
     //   pwr_gap > 0: 功率有余 → 充电
@@ -224,6 +228,8 @@ void PowerManager::compute_and_apply_target_power() {
 
     target_cap_pwr += chassis_pwr_pid.update(pwr_gap, target_cap_pwr) + ff_pwr;
 
+    test_max_releasing_pwr = max_releasing_pwr;
+    test_max_charging_pwr = max_charging_pwr;
     // 目标功率限幅
     if (bbm.start_up_info.starting) {
         // 启动阶段：充电限幅，放电不限（快速建立母线电压）
@@ -311,9 +317,15 @@ void PowerManager::handle_wireless_override() {
     // 1. 覆盖功率限制（由底盘通过 CAN 命令指定，超电内部决定具体功率值）
     power_limit = max_charging_pwr = 0.0f;
 
-    // 2. 无线充电模式下放电截止：电容放至 16V 后禁止继续放电
-    if (!wireless_discharge_ok_smtrg.state) {
-        max_releasing_pwr = 0.0f;
+    // 2. 无线充电模式下放电截止：电容放至 16V 后禁止大幅放电
+    if (wireless_discharge_ok_smtrg.state) {
+        wireless_override_releasing_limit_ = -100.0f;
+    } else {
+        wireless_override_releasing_limit_ += 100.0f / MAIN_CONTROL_LOOP_FREQ_HZ;
+        if (wireless_override_releasing_limit_ > 0.0f) {
+            wireless_override_releasing_limit_ = 0.0f;
+        }
+        max_releasing_pwr = wireless_override_releasing_limit_;
     }
 
     // 3. 检测 wireless_discharge_ok_smtrg 上升沿（充满时自动退出覆盖）
@@ -326,6 +338,7 @@ void PowerManager::handle_wireless_override() {
 void PowerManager::clear_wireless_state() {
     chassis_cmd_.desired_power_limit = 0;
     wireless_discharge_ok_smtrg.state = true;
+    wireless_override_releasing_limit_ = -100.0f;
     last_wireless_discharge_ok_ = true;
     last_wireless_override_active = false;
 }
