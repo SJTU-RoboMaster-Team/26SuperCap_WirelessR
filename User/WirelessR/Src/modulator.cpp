@@ -37,12 +37,12 @@ void Modulator::encode() {
     encoder_data_ &= 0x01FF; // 只取低9位
 
     parity_ = 0x0;
-    for (uint8_t i = 0; i < DATA_LEN; i++) {
+    for (uint8_t i = 0; i < PAYLOAD_LEN; i++) {
         parity_ ^= (encoder_data_ >> i) & 0x1; // 异或每一位计算奇偶校验
     }
 
     // 拼接成完整的 20 位帧: [Start(9bit)] + [Data(9bit)] + [Parity(1bit)] + [Stop(1bit)]
-    data_frame_ = (START_SIGN << (DATA_LEN + 1 + 1)) | (encoder_data_ << 2) | (parity_ << 1) | STOP_SIGN;
+    data_frame_ = (START_SIGN << (PAYLOAD_LEN + 1 + 1)) | (encoder_data_ << 2) | (parity_ << 1) | STOP_SIGN;
 }
 
 // 3. 设置下一帧
