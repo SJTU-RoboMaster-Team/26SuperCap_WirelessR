@@ -10,11 +10,17 @@
 void CAN_send_msg(const uint8_t *data, uint32_t len);
 
 
+enum CapMsgType {
+    CAP_VOLTAGE,
+    WPT_VOLTAGE,
+};
+
 struct CapMsg {
     // uint16_t tick_;
-    uint16_t under_voltage_flag;
-    uint16_t cap_voltage;
-    float chassis_P;
+    volatile uint16_t under_voltage_flag;
+    // uint16_t cap_voltage;
+    volatile uint16_t payload;
+    volatile float chassis_P;
 }__attribute__((packed));
 
 // 底盘→超电控制包 (CAN ID 0x102)

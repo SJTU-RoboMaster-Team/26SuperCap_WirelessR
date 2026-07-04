@@ -129,11 +129,11 @@ typedef struct MP4201_HANDLE_T{
     uint32_t lastUpdateTime;
 
     // --- 实时数据 ---
-    float vin_meas;
-    float vout_meas;
-    float iin_meas;
-    float iout_meas;
-    float power_meas;
+    volatile float vin_meas;
+    volatile float vout_meas;
+    volatile float iin_meas;
+    volatile float iout_meas;
+    volatile float power_meas;
 
     // --- 控制目标 ---
     MP4201_ControlMode_t controlMode;
