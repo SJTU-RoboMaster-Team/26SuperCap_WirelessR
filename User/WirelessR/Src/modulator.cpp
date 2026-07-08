@@ -4,14 +4,14 @@
 //
 
 #include "../Inc/modulator.h"
-#include "hrtim.h"
 
 // 引入外部 MP4201 设备句柄获取数据
 extern MP4201_Handle_t mp4201_dev;
+extern PowerManager pm;
 
 // 1. 获取 MP4201 原始数据
 void Modulator::update_wpt_msg() {
-    wpt_msg_.switch_flag_ = mp4201_dev.wpt_switch_flag_;
+    wpt_msg_.switch_flag_ = mp4201_dev.wpt_switch_flag_ = pm.chassis_cmd_.desired_power_limit;
     switch (encoder_.frametype_) {
         // MSB of payload indicates what the message represents. Bit 0 stands for power, while bit 1 stands for voltage
         case Encoder::POWER: {

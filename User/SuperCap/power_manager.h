@@ -10,6 +10,9 @@
 #include "protocol.h"
 #include "flash_data_structure.h"
 #include "can_task.h"
+#include "../WirelessR/Inc/MP4201.h"
+
+extern MP4201_Handle_t mp4201_dev;
 
 class PowerManager {
 public:
@@ -86,7 +89,10 @@ public:
     uint8_t err_code = 0;
     power_parameter_t power_parameter{};
 
-    bool wireless_active = false; // 由 WirelessChargeManager 设置
+    // CAN 命令
+    ChassisCmd chassis_cmd_{};
+    bool transmitter_detected_ = false; // 判断整流侧4201是否有电
+    bool charge_allowed_ = false; // whether charging is allowed
 
     // CAN 命令接口：底盘请求进入无线充覆盖模式
     void set_chassis_cmd(const ChassisCmd& cmd) {
@@ -101,7 +107,7 @@ public:
     //是否允许wcm开启MP4201 同时满足3个条件
     // 1. 主机请求无线充电 2. 无线充电端口有电压 3. 电容电压放到下阈值
     [[nodiscard]] bool allow_wireless_mp4201_start() const {
-        return wireless_active && is_wireless_override_active() && !wireless_discharge_ok_smtrg.state;
+        return  transmitter_detected_ && charge_allowed_ && is_wireless_override_active() && !wireless_discharge_ok_smtrg.state;
     }
 
     // 获取压缩后的状态码
@@ -111,6 +117,8 @@ public:
     LowPassFilter filtered_out_pwr = LowPassFilter(0, 0.05);
     LowPassFilter filtered_in_pwr = LowPassFilter(0, 0.05);
     LowPassFilter filtered_cap_pwr = LowPassFilter(0, 0.05);
+    LowPassFilter filtered_kp = LowPassFilter(3.0, 0.005);    // 一级滤波
+    LowPassFilter filtered_kp_2 = LowPassFilter(3.0, 0.005);  // 二级滤波，级联实现零初始斜率S曲线 总建立时间 40ms
 
 private:
     PID& cap_pwr_pid;
@@ -119,10 +127,8 @@ private:
     PID& wireless_recharge_pid;
     BuckBoostManager& bbm;
 
-    // CAN 命令
-    ChassisCmd chassis_cmd_{};
     // 用于检测 wireless_active 下降沿（离开无线充区时清空无线相关状态）
-    bool last_wireless_active_ = false;
+    bool last_transmitter_detected_ = false;
     // 用于检测 chassis_cmd 上升/下降沿，
     bool last_wireless_override_active = false;
     // 无线充覆盖：检测 wireless_discharge_ok_smtrg 上升沿（充满时自动退出覆盖）

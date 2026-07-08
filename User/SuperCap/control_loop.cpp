@@ -41,10 +41,10 @@ PID iout_pid(0.005, 0.0, 0.0, 0.02, 0.01); // 10uH 其软无比
 
 
 // PID cap_pwr_pid(0.0003, 0, 0.000, 0, 0.05);
-PID cap_pwr_pid(0.0003, 0, 0.05, 0, 0.05);
-PID chassis_pwr_pid(0.008, 0, 0.0f, 0, 10);
+PID cap_pwr_pid(0.0003f, 0.0f, 0.05, 0.0f, 0.05f);
+PID chassis_pwr_pid(0.008f, 0.0f, 0.001f, 0.0f, 10.0f);
 // PID referee_buffer_pid(1.5f, 0.0007, 0.00, 10.0f/0.0007f, 150);
-PID referee_buffer_pid(1.5f, 0.0001, 0.01, 10000.0f, 150);
+PID referee_buffer_pid(3.0f, 0.01f, 0.05f, 200.0f, 150.0f);
 PID wireless_recharge_pid(0.005f, 0.0001f,0.05f,0.0f,WR_CHARGE_MAX_CURRENT);
 
 BuckBoostManager bbm(left, right, vout_pid, iout_pid);
@@ -87,7 +87,7 @@ void CAN_control_loop() {
  so loop_flag is written in end of bbm.handle()
  when referee disconnected, loop_flag is set true to keep program on
 */
-float set_voltage = 6; // for debug purpose
+float set_voltage = 10; // for debug purpose
 void main_control_loop() {
 
     static uint16_t loop_cnt = 0;
@@ -105,7 +105,7 @@ void main_control_loop() {
 
     bbm.update_adc_data(
         cali_estimator.calibrate_in_voltage((float)adc_buffer.v_in * V_IN_TO_FLOAT) - 0.1f,
-        cali_estimator.calibrate_cap_voltage((float)adc_buffer.v_c * V_C_TO_FLOAT) - 0.2f,
+        cali_estimator.calibrate_cap_voltage((float)adc_buffer.v_c * V_C_TO_FLOAT),
         cali_estimator.calibrate_in_current((float)adc_buffer.i_in * I_IN_TO_FLOAT),
         cali_estimator.calibrate_out_current((float)adc_buffer.i_o * I_O_TO_FLOAT),
         cali_estimator.calibrate_cap_current((float)adc_buffer.i_c * I_C_TO_FLOAT)

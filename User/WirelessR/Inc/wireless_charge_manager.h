@@ -30,14 +30,16 @@ public:
     void handle();
 
     // ---- 状态查询 ----
-    bool is_wireless_active() const { return wireless_active_; }
+    bool is_transmitter_detected() const { return transmitter_detected_; }
     uint32_t get_chassis_energy_bonus() const { return chassis_energy_bonus_; }
     float get_energy_accumulator() const { return energy_accumulator_; }
 
     // ---- 配置 ----
     struct Config {
-        float vin_upper_threshold = WR_CHARGE_VIN_UPPER_THRESHOLD;  // 无线充激活上阈值 (V)
-        float vin_lower_threshold = WR_CHARGE_VIN_LOWER_THRESHOLD;  // 无线充退出下阈值 (V)
+        float transmitter_detector_vin_upper_threshold = WR_CHARGE_TRANSMITTER_DETECT_VIN_UPPER_THRESHOLD;  // 无线充激活上阈值 (V)
+        float transmitter_detector_vin_lower_threshold = WR_CHARGE_TRANSMITTER_DETECT_VIN_LOWER_THRESHOLD;  // 无线充退出下阈值 (V)
+        float charge_allow_vin_upper_threshold = WR_CHARGE_CHARGE_ALLOWANCE_VIN_UPPER_THRESHOLD;  // 无线充激活上阈值 (V)
+        float charge_allow_vin_lower_threshold = WR_CHARGE_CHARGE_ALLOWANCE_VIN_LOWER_THRESHOLD;  // 无线充退出下阈值 (V)
         float charge_target_voltage = WR_CHARGE_TARGET_VOLTAGE;     // 超电目标充电电压 (V)
         float max_charge_current = WR_CHARGE_MAX_CURRENT;           // 最大充电电流 (A)
         float energy_per_bonus = WR_CHARGE_ENERGY_PER_BONUS;        // 每多少 J 能量差获得一次 bonus
@@ -57,8 +59,10 @@ private:
     Modulator& modulator_;
 
     // 无线充电压检测 (施密特触发器)
-    SchmittTrigger<float> vin_trigger_{config.vin_upper_threshold, config.vin_lower_threshold, false};
-    bool wireless_active_ = false;
+    SchmittTrigger<float> transmitter_detector_smtrg_{config.transmitter_detector_vin_upper_threshold, config.transmitter_detector_vin_lower_threshold, false};
+    SchmittTrigger<float> charge_allow_smtrg_{config.charge_allow_vin_upper_threshold, config.charge_allow_vin_lower_threshold, false};
+    bool transmitter_detected_ = false;
+    bool charge_allowed_ = false;
 
     // 能量积分器
     float energy_accumulator_ = 0;   // (超电输入 - 底盘输出) 能量差累积 (J)

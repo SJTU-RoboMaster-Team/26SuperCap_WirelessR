@@ -41,7 +41,7 @@ void MX_FDCAN3_Init(void)
   hfdcan3.Init.ClockDivider = FDCAN_CLOCK_DIV1;
   hfdcan3.Init.FrameFormat = FDCAN_FRAME_CLASSIC;
   hfdcan3.Init.Mode = FDCAN_MODE_NORMAL;
-  hfdcan3.Init.AutoRetransmission = DISABLE;
+  hfdcan3.Init.AutoRetransmission = ENABLE;
   hfdcan3.Init.TransmitPause = DISABLE;
   hfdcan3.Init.ProtocolException = DISABLE;
   hfdcan3.Init.NominalPrescaler = 17;

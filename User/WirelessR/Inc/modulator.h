@@ -8,7 +8,9 @@
 
 #include "../Inc/MP4201.h"
 #include "../Inc/timer.h"
+#include "../../SuperCap/power_manager.h"
 #include "main.h"
+#include "hrtim.h"
 
 #define FRAME_LEN (8 + 1 + 9 + 1 + 1) // 20 bits
 #define DATA_LEN 9

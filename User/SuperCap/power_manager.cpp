@@ -178,13 +178,27 @@ void PowerManager::compute_buffer_compensation() {
         buffer_surplus = (int32_t)((float)buffer_surplus * 0.25f);
     }
 
-    // 动态 PID 增益：底盘功率越大，响应越激进
-    if      (filtered_out_pwr.val > 250.0f) referee_buffer_pid.kp = 6.5f;
-    else if (filtered_out_pwr.val > 150.0f) referee_buffer_pid.kp = 3.5f;
-    else                                     referee_buffer_pid.kp = 1.5f;
+    // 动态 PID 增益：综合底盘功率和 buffer 偏差，取两者需求的最大增益
+    float power_based_kp;
+    // buffer 有盈余时无急迫性，功率增益不应推高 Kp 鼓励充电，否则会削弱本该释放的放电功率
+    if (buffer_surplus >= 0 ) power_based_kp = 3.0f;
+    else if (filtered_out_pwr.val > 250.0f) power_based_kp = 15.0f;
+    else if (filtered_out_pwr.val > 150.0f) power_based_kp = 7.0f;
+    else                                     power_based_kp = 3.0f;
 
+    float buffer_based_kp;
+    if      (buffer_surplus < -30) buffer_based_kp = 10.0f;
+    else if (buffer_surplus < -15) buffer_based_kp = 6.0f;
+    else if (buffer_surplus < -7)  buffer_based_kp = 4.0f;
+    else                              buffer_based_kp = 3.0f;
+
+    float raw_kp = (buffer_surplus < -7)
+                       ? (buffer_based_kp > power_based_kp ? buffer_based_kp : power_based_kp)
+                       : power_based_kp;
+    referee_buffer_pid.kp = filtered_kp_2.update(filtered_kp.update(raw_kp));
     // 施密特触发器判断偏差是否超出死区（阈值 3J/7J）
-    buffer_far_from_target.update(buffer_surplus);
+    uint16_t surplus_abs = (uint16_t)(buffer_surplus < 0 ? -buffer_surplus : buffer_surplus);
+    buffer_far_from_target.update(surplus_abs);
     referee_buffer_pid.update(0.0f, (float)buffer_surplus);
 
     // 仅在未满电或 buffer 危急时计算补偿
@@ -193,9 +207,10 @@ void PowerManager::compute_buffer_compensation() {
         //   buffer_surplus < 0 (buffer不足) → PID输出 > 0 → compensation < 0 → 电容多放电
         //   buffer_surplus > 0 (buffer过多) → PID输出 < 0 → compensation > 0 → 电容多充电
         // 偏差大时用完整输出，接近目标时仅用积分项以减少抖动
-        compensation = (buffer_far_from_target.state)
-                     ? (-referee_buffer_pid.get_output())
-                     : (-referee_buffer_pid.get_iout());
+        // compensation = (buffer_far_from_target.state)
+        //              ? (-referee_buffer_pid.get_output())
+        //              : (-referee_buffer_pid.get_iout());
+        compensation = -referee_buffer_pid.get_output();
     } else {
         compensation = 0.0f;
     }
@@ -283,11 +298,12 @@ void PowerManager::handle_wireless_override() {
     // 若主机下发命令但最终未去充电区，超电侧不做超时处理，由主机负责取消。
 
     const bool override_active = is_wireless_override_active();
-    // 检测 wireless_active 下降沿（离开充电区）
-    if (!wireless_active && last_wireless_active_) {
+
+    // 丢失发射端联系（离开充电区）
+    if (!transmitter_detected_ && last_transmitter_detected_) {
         clear_wireless_state();
     }
-    last_wireless_active_ = wireless_active;
+    last_transmitter_detected_ = transmitter_detected_;
 
     if (!override_active && last_wireless_override_active) {
         clear_wireless_state();
