@@ -11,6 +11,8 @@
 #include "../../config.h"
 
 #define WCM_ONE_MILLISECOND MAIN_CONTROL_LOOP_FREQ_HZ / 1000
+#define CHARGE_ALLOW_TICK_THRES 3000 * WCM_ONE_MILLISECOND
+#define TRANSFER_CV_END_THRES 2000 * WCM_ONE_MILLISECOND
 /**
  * @brief 无线充电管理器
  *
@@ -45,6 +47,8 @@ public:
         float energy_per_bonus = WR_CHARGE_ENERGY_PER_BONUS;        // 每多少 J 能量差获得一次 bonus
         uint32_t bonus_per_joule = WR_CHARGE_BONUS_PER_JOULE;       // 每次 bonus 增加的底盘能量
         float dt = WR_CHARGE_LOOP_DT;                               // 控制周期 (s)，由主控制环频率派生
+        float charge_target_power = WR_CP_TARGET;
+        float charge_ramp_time = 2.0f;
     } config;
 
     // ---- 实时数据 (供外部调试/显示) ----
@@ -63,6 +67,7 @@ private:
     SchmittTrigger<float> charge_allow_smtrg_{config.charge_allow_vin_upper_threshold, config.charge_allow_vin_lower_threshold, false};
     bool transmitter_detected_ = false;
     bool charge_allowed_ = false;
+    float mp4201_charge_power_cmd_ = 0.0f;
 
     // 能量积分器
     float energy_accumulator_ = 0;   // (超电输入 - 底盘输出) 能量差累积 (J)

@@ -5,7 +5,9 @@
 #include "../Inc/wireless_charge_manager.h"
 
 volatile bool transmitter_detected;
-volatile bool charging_allowance;
+uint32_t charge_allowance_tick = 0;
+bool pinged = false;
+bool charging_allowance = false;
 
 void WirelessChargeManager::handle() {
     //    读取无线充输入电压，更新施密特触发器
@@ -15,16 +17,40 @@ void WirelessChargeManager::handle() {
         mp4201_.lost_connection_tick = 0;
         float vin = mp4201_.vin_meas;
         transmitter_detected = transmitter_detector_smtrg_.update(vin);
-        charging_allowance = charge_allow_smtrg_.update(vin);
+        charge_allow_smtrg_.update(vin);
     } else {
         mp4201_.lost_connection_tick++;
-        if (mp4201_.lost_connection_tick >= 200 * WCM_ONE_MILLISECOND) { // 100ms timeout
+        if (mp4201_.lost_connection_tick >= 200 * WCM_ONE_MILLISECOND) { // 200ms timeout
             transmitter_detected = false;                                // force turn off
             charging_allowance = false;
+            MP4201_Enable(&mp4201_, 0);
+            return;
+        }
+    }
+
+    if (!pinged) {
+        // 充电许可计时器，副边直流电压至少保持3s才允许功率传输
+        if (mp4201_dev.vin_meas > WR_CHARGE_CHARGE_ALLOWANCE_VIN_UPPER_THRESHOLD
+            && mp4201_dev.vin_meas < WR_CHARGE_OVER_VOLTAGE_LOCKOUT_THRESHOLD)
+        {
+            charge_allowance_tick++;
+            if (charge_allowance_tick > CHARGE_ALLOW_TICK_THRES) {
+                charge_allowance_tick = CHARGE_ALLOW_TICK_THRES;
+            }
         } else {
-            // 通信掉线期间维持原状态 (由 vin_trigger_.state 保存)
-            transmitter_detected = transmitter_detector_smtrg_.state;
-            charging_allowance = charge_allow_smtrg_.state;
+            if (charge_allowance_tick > 0) {
+                charge_allowance_tick--;
+            }
+        }
+        if (charge_allowance_tick >= TRANSFER_CV_END_THRES) {
+            mp4201_.wpt_switch_flag_ = true;
+            if (charge_allowance_tick >= CHARGE_ALLOW_TICK_THRES) {
+                charging_allowance = true;
+                pinged = true;
+            }
+        } else {
+            mp4201_.wpt_switch_flag_ = false;
+            charging_allowance = false;
         }
     }
 
@@ -42,20 +68,47 @@ void WirelessChargeManager::handle() {
     pm_.transmitter_detected_ = transmitter_detected_;
     if (!transmitter_detected_) {
         charging_allowance = false;
+        pinged = false;
+        mp4201_.wpt_switch_flag_ = false;
+        charge_allowance_tick = 0;
     }
     pm_.charge_allowed_ = charge_allowed_ = charging_allowance;
     // main charging loop
     // 将启动 MP4201 权限转移给 PM
-    if (pm_.allow_wireless_mp4201_start()) {
+    const bool charge_requested = pm_.allow_wireless_mp4201_start();
+    const float charge_power_step = config.charge_target_power * config.dt / config.charge_ramp_time;
+    if (charge_requested) {
         if (!mp4201_started_) {
-            MP4201_SetCP_Target(&mp4201_, 120, 0, 0.005f);
-            MP4201_Enable(&mp4201_, 1);
-            mp4201_started_ = true;
+            mp4201_charge_power_cmd_ = 0.0f;
+            mp4201_.targetVal = 0.0f;
+            MP4201_SetCP_Target(&mp4201_, 0.0f, 0, 0.005f);
+            if (MP4201_Enable(&mp4201_, 1) == HAL_OK) {
+                mp4201_started_ = true;
+            }
+        }
+        if (mp4201_started_) {
+            mp4201_charge_power_cmd_ += charge_power_step;
+            if (mp4201_charge_power_cmd_ > config.charge_target_power) {
+                mp4201_charge_power_cmd_ = config.charge_target_power;
+            }
+            mp4201_.targetVal = mp4201_charge_power_cmd_;
         }
     } else {
         if (mp4201_started_) {
-            MP4201_Enable(&mp4201_, 0);
-            mp4201_started_ = false;
+            mp4201_charge_power_cmd_ -= charge_power_step;
+            if (mp4201_charge_power_cmd_ <= 0.0f) {
+                mp4201_charge_power_cmd_ = 0.0f;
+                mp4201_.targetVal = 0.0f;
+                MP4201_Enable(&mp4201_, 0);
+                mp4201_started_ = false;
+            } else {
+                mp4201_.targetVal = mp4201_charge_power_cmd_;
+            }
+            pinged = false;
+            mp4201_.wpt_switch_flag_ = false;
+            charge_allowance_tick = 0;
+        } else {
+            mp4201_charge_power_cmd_ = 0.0f;
         }
     }
 
@@ -70,6 +123,8 @@ void WirelessChargeManager::enter_wireless_mode() {
     transmitter_detected_ = true;
 
     MP4201_Enable(&mp4201_, 0);
+    mp4201_charge_power_cmd_ = 0.0f;
+    mp4201_.targetVal = 0.0f;
 
     // 负载调制器默认启动
 }
@@ -78,6 +133,8 @@ void WirelessChargeManager::exit_wireless_mode() {
     transmitter_detected_ = false;
 
     MP4201_Enable(&mp4201_, 0);
+    mp4201_charge_power_cmd_ = 0.0f;
+    mp4201_.targetVal = 0.0f;
 
     mp4201_started_ = false;
     // 不停止负载调制器

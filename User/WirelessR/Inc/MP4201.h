@@ -137,7 +137,7 @@ typedef struct MP4201_HANDLE_T{
 
     // --- 控制目标 ---
     MP4201_ControlMode_t controlMode;
-    float targetVal; // CV(V), CC(A), CP(W)
+    volatile float targetVal; // CV(V), CC(A), CP(W)
 
     // --- PI 控制器 (专用于 CP 模式) ---
     MP4201_PI_Config_t pi;

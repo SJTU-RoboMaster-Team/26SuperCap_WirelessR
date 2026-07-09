@@ -11,7 +11,7 @@ extern PowerManager pm;
 
 // 1. 获取 MP4201 原始数据
 void Modulator::update_wpt_msg() {
-    wpt_msg_.switch_flag_ = mp4201_dev.wpt_switch_flag_ = pm.chassis_cmd_.desired_power_limit;
+    wpt_msg_.switch_flag_ = mp4201_dev.wpt_switch_flag_;
     switch (encoder_.frametype_) {
         // MSB of payload indicates what the message represents. Bit 0 stands for power, while bit 1 stands for voltage
         case Encoder::POWER: {
@@ -20,7 +20,7 @@ void Modulator::update_wpt_msg() {
             break;
         }
         case Encoder::VOLTAGE: {
-            wpt_msg_.payload_ = (uint8_t)(mp4201_dev.vin_meas / 50.f * 127) | 0x80;
+            wpt_msg_.payload_ = (uint8_t)(mp4201_dev.vin_meas / 80.f * 127) | 0x80;
             encoder_.frametype_ = Encoder::POWER;
             break;
         }
