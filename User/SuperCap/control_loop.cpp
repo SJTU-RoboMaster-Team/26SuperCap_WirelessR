@@ -83,7 +83,7 @@ void CAN_control_loop() {
             break;
         }
         case WPT_VOLTAGE: {
-            msg.payload = (uint16_t)(mp4201_dev.vin_meas / 40.0f * 32767) & 0x7FFF;
+            msg.payload = (uint16_t)(mp4201_dev.vin_meas / 80.0f * 32767) & 0x7FFF;
             cap_msg_type = CAP_VOLTAGE;
             break;
         }
