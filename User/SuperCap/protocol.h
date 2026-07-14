@@ -3,8 +3,8 @@
  * @file    referee_protocol.cpp/h
  * @brief   Referee communication(UART) protocol. 裁判系统通信协议
  ******************************************************************************
- * @version V1.7.0
- * @date 2024.12.25
+ * @version V2.0.0
+ * @date 2026.06.26
  * @protocol
  * 1. UART config 串口配置
  *    波特率115200，8位数据位，1位停止位，无硬件流控，无校验位
@@ -111,40 +111,28 @@ typedef struct {
     uint8_t winner;
 } __packed game_result_t;
 
-// 0x0003 32 机器人血量数据，固定以3Hz频率发送 服务器→全体机器人
+// 0x0003 20 机器人血量数据，固定以3Hz频率发送 服务器→全体机器人
 typedef struct {
-    // 红1英雄机器人血量。若该机器人未上场或者被罚下，则血量为0
-    uint16_t red_1_robot_HP;
-    // 红2工程机器人血量。若该机器人未上场或者被罚下，则血量为0
-    uint16_t red_2_robot_HP;
-    // 红3步兵机器人血量。若该机器人未上场或者被罚下，则血量为0
-    uint16_t red_3_robot_HP;
-    // 红4步兵机器人血量。若该机器人未上场或者被罚下，则血量为0
-    uint16_t red_4_robot_HP;
-    // 保留位
-    uint16_t reserved_red;
-    // 红7哨兵机器人血量。若该机器人未上场或者被罚下，则血量为0
-    uint16_t red_7_robot_HP;
-    // 红方前哨站血量
-    uint16_t red_outpost_HP;
-    // 红方基地血量
-    uint16_t red_base_HP;
-    // 蓝1英雄机器人血量。若该机器人未上场或者被罚下，则血量为0
-    uint16_t blue_1_robot_HP;
-    // 蓝2工程机器人血量。若该机器人未上场或者被罚下，则血量为0
-    uint16_t blue_2_robot_HP;
-    // 蓝3步兵机器人血量。若该机器人未上场或者被罚下，则血量为0
-    uint16_t blue_3_robot_HP;
-    // 蓝4步兵机器人血量。若该机器人未上场或者被罚下，则血量为0
-    uint16_t blue_4_robot_HP;
-    // 保留位
-    uint16_t reserved_blue;
-    // 蓝7哨兵机器人血量。若该机器人未上场或者被罚下，则血量为0
-    uint16_t blue_7_robot_HP;
-    // 蓝方前哨站血量
-    uint16_t blue_outpost_HP;
-    // 蓝方基地血量
-    uint16_t blue_base_HP;
+    // 己方1号英雄机器人血量。若该机器人未上场或者被罚下，则血量为0
+    uint16_t ally_1_robot_HP;
+    // 己方2号工程机器人血量。若该机器人未上场或者被罚下，则血量为0
+    uint16_t ally_2_robot_HP;
+    // 己方3号步兵机器人血量。若该机器人未上场或者被罚下，则血量为0
+    uint16_t ally_3_robot_HP;
+    // 己方4号步兵机器人血量。若该机器人未上场或者被罚下，则血量为0
+    uint16_t ally_4_robot_HP;
+    // 己方全队总伤害与对方全队总伤害之差
+    int16_t damage_difference;
+    // 己方7号哨兵机器人血量。若该机器人未上场或者被罚下，则血量为0
+    uint16_t ally_7_robot_HP;
+    // 己方前哨站血量
+    uint16_t ally_outpost_HP;
+    // 己方基地血量
+    uint16_t ally_base_HP;
+    // 对方前哨站血量
+    uint16_t enemy_outpost_HP;
+    // 对方基地血量
+    uint16_t enemy_base_HP;
 } __packed game_robot_HP_t;
 
 // 0x0101 4 场地事件数据，固定以1Hz频率发送 服务器→己方全体机器人
@@ -229,6 +217,8 @@ typedef struct {
     uint16_t shooter_barrel_heat_limit;
     // 机器人底盘功率上限
     uint16_t chassis_power_limit;
+    // 机器人射击初速度上限
+    float bullet_speed_limit;
     // gimbal口输出，0为无输出，1为 24V输出
     uint8_t power_management_gimbal_output : 1;
     // chassis口输出，0为无输出，1为24V输出
@@ -405,18 +395,29 @@ typedef struct {
     float reserved_2;
 } __packed ground_robot_position_t;
 
-// 0x020C 1 雷达标记进度数据，固定以1Hz频率发送 服务器→己方雷达机器人
+// 0x020C 2 雷达标记进度数据，固定以1Hz频率发送 服务器→己方雷达机器人
 typedef struct {
-    // 在对应机器人被标记进度≥100时发送1，被标记进度<100时发送0。
+    // 对方机器人：在对应机器人被标记进度≥100时发送1，被标记进度<100时发送0。
+    // 己方机器人：在对应机器人，被标记进度≥50时发送1，被标记进度<50时发送0。
     // • bit 0：对方1号英雄机器人易伤情况
     // • bit 1：对方2号工程机器人易伤情况
     // • bit 2：对方3号步兵机器人易伤情况
     // • bit 3：对方4号步兵机器人易伤情况
-    // • bit 4：对方哨兵机器人易伤情况
-    uint8_t mark_progress;
+    // • bit 4：对方空中机器人特殊标识情况
+    // • bit 5：对方哨兵机器人易伤情况
+    // • bit 6：己方1号英雄机器人特殊标识情况
+    // • bit 7：己方2号工程机器人特殊标识情况
+    // • bit 8：己方3号步兵机器人特殊标识情况
+    // • bit 9：己方4号步兵机器人特殊标识情况
+    // • bit 10：己方空中机器人特殊标识情况
+    // • bit 11：己方哨兵机器人特殊标识情况
+    // • bit 12：对方空中机器人是否被己方雷达激光瞄准
+    // • bit 13：对方空中机器人当前是否处于被反制状态
+    // • bit 14：己方空中机器人是否被对方雷达激光瞄准
+    // • bit 15：己方空中机器人当前是否处于被反制状态
+    uint16_t mark_progress;
 } __packed radar_mark_data_t;
 
-// 0x020D 6 哨兵自主决策信息同步，固定以1Hz频率发送 服务器→己方哨兵机器人
 typedef struct {
     // bit 0-10：除远程兑换外，哨兵机器人成功兑换的允许发弹量，开局为0，在
     //   哨兵机器人成功兑换一定允许发弹量后，该值将变为哨兵机器人成功兑换的
@@ -435,8 +436,19 @@ typedef struct {
     uint32_t sentry_info;
     // bit 0：哨兵当前是否处于脱战状态，处于脱战状态时为1，否则为0。
     // bit 1-11：队伍17mm允许发弹量的剩余可兑换数。
-    // bit 12-15：保留。
+    // bit 12-13：哨兵当前姿态，1为进攻姿态，2为防御姿态，3为移动姿态。
+    // bit 14：己方能量机关是否能够进入正在激活状态，1为当前可激活。
+    // bit 15：哨兵当前姿态是否为强化姿态。
     uint16_t sentry_info_2;
+    // bit 0-7：哨兵进攻姿态弱化前剩余可持续时长（单位秒，下同）
+    // bit 8-15：哨兵防御姿态弱化前剩余可持续时长
+    // bit 16-23：哨兵移动姿态弱化前剩余可持续时长
+    // bit 24-31：保留位
+    // bit 32-39：哨兵强化进攻姿态剩余可持续时长
+    // bit 40-47：哨兵强化防御姿态剩余可持续时长
+    // bit 48-55：哨兵强化移动姿态剩余可持续时长
+    // bit 56-63：保留位
+    uint64_t sentry_info_3;
 } __packed sentry_info_t;
 
 // 0x020E 1 雷达自主决策信息同步，固定以1Hz频率发送 服务器→己方雷达机器人
@@ -452,7 +464,7 @@ typedef struct {
 
 // 机器人间交互数据
 
-// 0x0301 127 机器人交互数据，发送方触发发送，频率上限为30Hz
+// 0x0301 118 机器人交互数据，发送方触发发送，频率上限为30Hz
 typedef struct {
     // 需为开放的子内容ID
     uint16_t data_cmd_id;
@@ -461,7 +473,8 @@ typedef struct {
     // 接收者ID
     // • 仅限己方通信
     // • 需为规则允许的多机通讯接收者
-    // • 若接收者为选手端，则仅可发送至发送者对应的选手端
+    // • 若接收者为选手端，则除雷达系统外，仅可发送至发送者对应的选手端。
+    //   雷达系统可发送至任意己方选手端。
     // • ID编号详见附录
     uint16_t receiver_id;
     // 内容数据段，x最大为112
@@ -611,30 +624,54 @@ typedef struct {
 
 // 0x0305 24 选手端小地图接收雷达数据，频率上限为5Hz 雷达→服务器→己方所有选手端
 typedef struct {
-    // 英雄机器人x位置坐标，单位：cm
-    uint16_t hero_position_x;
-    // 英雄机器人y位置坐标，单位：cm
-    uint16_t hero_position_y;
-    // 工程机器人x位置坐标，单位：cm
-    uint16_t engineer_position_x;
-    // 工程机器人y位置坐标，单位：cm
-    uint16_t engineer_position_y;
-    // 3号步兵机器人x位置坐标，单位：cm
-    uint16_t infantry_3_position_x;
-    // 3号步兵机器人y位置坐标，单位：cm
-    uint16_t infantry_3_position_y;
-    // 4号步兵机器人x位置坐标，单位：cm
-    uint16_t infantry_4_position_x;
-    // 4号步兵机器人y位置坐标，单位：cm
-    uint16_t infantry_4_position_y;
-    // 5号步兵机器人x位置坐标，单位：cm
-    uint16_t infantry_5_position_x;
-    // 5号步兵机器人y位置坐标，单位：cm
-    uint16_t infantry_5_position_y;
-    // 哨兵机器人x位置坐标，单位：cm
-    uint16_t sentry_position_x;
-    // 哨兵机器人y位置坐标，单位：cm
-    uint16_t sentry_position_y;
+    // 对方英雄机器人x位置坐标，单位：cm
+    uint16_t opponent_hero_position_x;
+    // 对方英雄机器人y位置坐标，单位：cm
+    uint16_t opponent_hero_position_y;
+    // 对方工程机器人x位置坐标，单位：cm
+    uint16_t opponent_engineer_position_x;
+    // 对方工程机器人y位置坐标，单位：cm
+    uint16_t opponent_engineer_position_y;
+    // 对方3号步兵机器人x位置坐标，单位：cm
+    uint16_t opponent_infantry_3_position_x;
+    // 对方3号步兵机器人y位置坐标，单位：cm
+    uint16_t opponent_infantry_3_position_y;
+    // 对方4号步兵机器人x位置坐标，单位：cm
+    uint16_t opponent_infantry_4_position_x;
+    // 对方4号步兵机器人y位置坐标，单位：cm
+    uint16_t opponent_infantry_4_position_y;
+    // 对方 6 号空中机器人 x 位置坐标, 单位：cm
+    uint16_t opponent_aerial_position_x;
+    // 对方 6 号空中机器人 y 位置坐标, 单位：cm
+    uint16_t opponent_aerial_position_y;
+    // 对方哨兵机器人x位置坐标，单位：cm
+    uint16_t opponent_sentry_position_x;
+    // 对方哨兵机器人y位置坐标，单位：cm
+    uint16_t opponent_sentry_position_y;
+    // 己方英雄机器人x位置坐标，单位：cm
+    uint16_t ally_hero_position_x;
+    // 己方英雄机器人y位置坐标，单位：cm
+    uint16_t ally_hero_position_y;
+    // 己方工程机器人x位置坐标，单位：cm
+    uint16_t ally_engineer_position_x;
+    // 己方工程机器人y位置坐标，单位：cm
+    uint16_t ally_engineer_position_y;
+    // 己方3号步兵机器人x位置坐标，单位：cm
+    uint16_t ally_infantry_3_position_x;
+    // 己方3号步兵机器人y位置坐标，单位：cm
+    uint16_t ally_infantry_3_position_y;
+    // 己方4号步兵机器人x位置坐标，单位：cm
+    uint16_t ally_infantry_4_position_x;
+    // 己方4号步兵机器人y位置坐标，单位：cm
+    uint16_t ally_infantry_4_position_y;
+    // 己方 6 号空中机器人 x 位置坐标, 单位：cm
+    uint16_t ally_aerial_position_x;
+    // 己方 6 号空中机器人 y 位置坐标, 单位：cm
+    uint16_t ally_aerial_position_y;
+    // 己方哨兵机器人x位置坐标，单位：cm
+    uint16_t ally_sentry_position_x;
+    // 己方哨兵机器人y位置坐标，单位：cm
+    uint16_t ally_sentry_position_y;
 } __packed map_robot_data_t;
 
 // 0x0306 8 自定义控制器与选手端交互数据，发送方触发发送，频率上限为30Hz
@@ -656,7 +693,7 @@ typedef struct {
     uint16_t reserved;
 } __packed custom_client_data_t;
 
-// 0x0307 103 选手端小地图接收哨兵数据，频率上限为1Hz
+// 0x0307 105 选手端小地图接收哨兵数据，频率上限为1Hz
 // 哨兵/半自动控制机器人→对应操作手选手端
 typedef struct {
     // 1：到目标点攻击
