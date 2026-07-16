@@ -133,6 +133,7 @@ private:
     bool last_wireless_override_active = false;
     // 无线充覆盖：检测 wireless_discharge_ok_smtrg 上升沿（充满时自动退出覆盖）
     bool last_wireless_discharge_ok_ = true;
+    float wireless_override_releasing_limit_ = -100.0f;
 
     // 用于状态判断的迟滞比较
     SchmittTrigger<float> cap_full_smtrg{ charge_parameter.full_charge_upper_threshold,

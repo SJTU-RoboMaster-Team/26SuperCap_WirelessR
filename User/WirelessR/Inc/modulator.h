@@ -13,7 +13,7 @@
 #include "hrtim.h"
 
 #define FRAME_LEN (8 + 1 + 9 + 1 + 1) // 20 bits
-#define DATA_LEN 9
+#define PAYLOAD_LEN 9
 #define START_SIGN 0x1FE
 #define STOP_SIGN 0x00
 #define MODULATION_PERIOD 42500

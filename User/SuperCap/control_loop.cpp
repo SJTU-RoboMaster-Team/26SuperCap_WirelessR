@@ -3,6 +3,10 @@
 //
 
 #include "control_loop.h"
+#include "../WirelessR/Inc/wireless_charge_manager.h"
+#include "../callback.h"
+#include "../config.h"
+#include "adc_sample.h"
 #include "buck_boost_manager.h"
 #include "calibrator_estimator.h"
 #include "can_task.h"
@@ -16,10 +20,6 @@
 #include "referee_comm.h"
 #include "types.h"
 #include "ws2812/ws2812.h"
-#include "../callback.h"
-#include "adc_sample.h"
-#include "../config.h"
-#include "../WirelessR/Inc/wireless_charge_manager.h"
 
 static uint32_t tick_40us;
 
@@ -39,7 +39,6 @@ PID iout_pid(0.005, 0.0, 0.0, 0.02, 0.01); // 10uH 其软无比
 
 //PID iout_pid(0.006, 0.080, 0.5, 0.1, 0.010);  // 10uH
 
-
 // PID cap_pwr_pid(0.0003, 0, 0.000, 0, 0.05);
 PID cap_pwr_pid(0.0003f, 0.0f, 0.05, 0.0f, 0.05f);
 PID chassis_pwr_pid(0.008f, 0.0f, 0.001f, 0.0f, 10.0f);
@@ -56,7 +55,7 @@ Calibrator cali_estimator;
 
 LCDComm lcd_comm(&huart3);
 
-WS2812 ws2812(&TIMER_HANDLER_WS2812_SEND,TIM_CHANNEL_1, 1);
+WS2812 ws2812(&TIMER_HANDLER_WS2812_SEND, TIM_CHANNEL_1, 1);
 
 LED led = LED(&ws2812);
 
@@ -71,10 +70,25 @@ WirelessChargeManager wcm(mp4201_dev, pm, load_modulator);
 
 extern RefreshFlag refresh_flag;
 // this loop will be run at 100 Hz
+
+CapMsgType cap_msg_type = CAP_VOLTAGE;
 void CAN_control_loop() {
     // msg.input_voltage = (uint16_t) (bbm.filtered_v_i.val*1000);
     // msg.tick_ = refresh_flag.tick_/1000;
-    msg.cap_voltage = (uint16_t)(bbm.filtered_v_c.val * 1000);
+    // msg.cap_voltage = (uint16_t)(bbm.filtered_v_c.val * 1000);
+    switch (cap_msg_type) {
+        case CAP_VOLTAGE: {
+            msg.payload = ((uint16_t)(bbm.filtered_v_c.val / 32.0f * 32767) & 0x7FFF) | (0x01 << 15);
+            cap_msg_type = WPT_VOLTAGE;
+            break;
+        }
+        case WPT_VOLTAGE: {
+            msg.payload = (uint16_t)(mp4201_dev.vin_meas / 80.0f * 32767) & 0x7FFF;
+            cap_msg_type = CAP_VOLTAGE;
+            break;
+        }
+    }
+
     msg.chassis_P = pm.filtered_in_pwr.val;
     // msg.cap_state = (uint8_t) pm.state;
     // msg.chassis_voltage = ((uint8_t)(bbm.v_i*1000.0f)) /100;

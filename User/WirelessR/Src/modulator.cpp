@@ -11,7 +11,7 @@ extern PowerManager pm;
 
 // 1. 获取 MP4201 原始数据
 void Modulator::update_wpt_msg() {
-    wpt_msg_.switch_flag_ = mp4201_dev.wpt_switch_flag_ = pm.chassis_cmd_.desired_power_limit;
+    wpt_msg_.switch_flag_ = mp4201_dev.wpt_switch_flag_;
     switch (encoder_.frametype_) {
         // MSB of payload indicates what the message represents. Bit 0 stands for power, while bit 1 stands for voltage
         case Encoder::POWER: {
@@ -20,7 +20,7 @@ void Modulator::update_wpt_msg() {
             break;
         }
         case Encoder::VOLTAGE: {
-            wpt_msg_.payload_ = (uint8_t)(mp4201_dev.vin_meas / 50.f * 127) | 0x80;
+            wpt_msg_.payload_ = (uint8_t)(mp4201_dev.vin_meas / 80.f * 127) | 0x80;
             encoder_.frametype_ = Encoder::POWER;
             break;
         }
@@ -37,12 +37,12 @@ void Modulator::encode() {
     encoder_data_ &= 0x01FF; // 只取低9位
 
     parity_ = 0x0;
-    for (uint8_t i = 0; i < DATA_LEN; i++) {
+    for (uint8_t i = 0; i < PAYLOAD_LEN; i++) {
         parity_ ^= (encoder_data_ >> i) & 0x1; // 异或每一位计算奇偶校验
     }
 
     // 拼接成完整的 20 位帧: [Start(9bit)] + [Data(9bit)] + [Parity(1bit)] + [Stop(1bit)]
-    data_frame_ = (START_SIGN << (DATA_LEN + 1 + 1)) | (encoder_data_ << 2) | (parity_ << 1) | STOP_SIGN;
+    data_frame_ = (START_SIGN << (PAYLOAD_LEN + 1 + 1)) | (encoder_data_ << 2) | (parity_ << 1) | STOP_SIGN;
 }
 
 // 3. 设置下一帧
