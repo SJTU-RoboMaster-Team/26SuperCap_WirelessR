@@ -128,7 +128,7 @@ void PowerManager::buffer_mode() {
     const bool buffer_low    = (power_parameter.buffer_energy < 60);
     const bool power_surplus = (filtered_out_pwr.val < power_limit);
 
-    if ((over_power && !empty) || buffer_low) {
+    if ((over_power && !empty) || (buffer_low && referee.connected())) {
         // 需要放电补充 或 buffer 危急 → 启动
         bbm.start();
     } else if (full_charge) {
@@ -330,7 +330,7 @@ void PowerManager::handle_wireless_override() {
     wireless_discharge_ok_smtrg.update(bbm.filtered_v_c.val);
 
     // 1. 覆盖功率限制（由底盘通过 CAN 命令指定，超电内部决定具体功率值）
-    power_limit = max_charging_pwr = 0.0f;
+    power_limit = max_charging_pwr = -5.0f;
 
     // 2. 无线充电模式下放电截止：电容放至 16V 后禁止大幅放电
     if (wireless_discharge_ok_smtrg.state) {
