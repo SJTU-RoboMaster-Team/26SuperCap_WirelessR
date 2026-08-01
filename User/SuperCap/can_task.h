@@ -23,7 +23,7 @@ struct CapMsg {
     volatile float chassis_P;
 }__attribute__((packed));
 
-// 底盘→超电控制包 (CAN ID 0x302)
+// 底盘→超电控制包 (CAN ID 0x472)
 // desired_power_limit > 0：请求进入无线充覆盖模式（具体功率限制由超电内部决定）
 // desired_power_limit <= 0：取消覆盖，恢复裁判系统功率限制
 struct ChassisCmd {
