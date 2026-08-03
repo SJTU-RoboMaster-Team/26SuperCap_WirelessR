@@ -15,7 +15,6 @@ void CAN_send_msg(const uint8_t *data, uint32_t len) {
     for (uint32_t i = 0; i < len; ++i) {
         TxData[i] = data[i];
     }
-
     // TxHeader.Identifier = 0x301; // 25国赛舵轮英雄
     TxHeader.Identifier = CAN_ID_CAP_STATUS; // 其他
     TxHeader.IdType = FDCAN_STANDARD_ID;

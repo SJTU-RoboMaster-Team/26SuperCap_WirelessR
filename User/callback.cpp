@@ -239,7 +239,8 @@ void HAL_FDCAN_RxFifo0Callback(FDCAN_HandleTypeDef* hfdcan, uint32_t RxFifo0ITs)
             return;
         }
         ChassisCmd cmd {};
-        cmd.desired_power_limit = fdcan_rx_data[0];
+        // cmd.desired_power_limit = fdcan_rx_data[0];
+        cmd.desired_power_limit = 0;
         pm.set_chassis_cmd(cmd);
     }
 }
