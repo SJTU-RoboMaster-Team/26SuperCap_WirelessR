@@ -41,12 +41,10 @@ enable_language(C ASM)
 file(GLOB_RECURSE SUPERCAP_SOURCES "User/SuperCap/*.c" "User/SuperCap/*.cpp")
 file(GLOB_RECURSE WIRELESSR_SOURCES "User/WirelessR/*.c" "User/WirelessR/*.cpp")
 file(GLOB GLOB_SOURCES "User/*.c" "User/*.cpp")
-file(GLOB SYS_SOURCES "Core/Src/*.c")
 add_executable(${CMAKE_PROJECT_NAME}
         ${SUPERCAP_SOURCES}
         ${WIRELESSR_SOURCES}
         ${GLOB_SOURCES}
-        ${SYS_SOURCES}
 )
 
 # Add STM32CubeMX generated sources
@@ -65,15 +63,15 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
 # Add include paths
 target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
     # Add user defined include paths
-        "/User/WirelessR/Inc"
-        "/User/SuperCap"
-        "/User/SuperCap/bmp"
-        "/User/SuperCap/lcd"
-        "/User/SuperCap/math_tool"
-        "/User/SuperCap/music"
-        "/User/SuperCap/task_manager"
-        "/User/SuperCap/ws2812"
-        "/User"
+        "${CMAKE_CURRENT_SOURCE_DIR}/User/WirelessR/Inc"
+        "${CMAKE_CURRENT_SOURCE_DIR}/User/SuperCap"
+        "${CMAKE_CURRENT_SOURCE_DIR}/User/SuperCap/bmp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/User/SuperCap/lcd"
+        "${CMAKE_CURRENT_SOURCE_DIR}/User/SuperCap/math_tool"
+        "${CMAKE_CURRENT_SOURCE_DIR}/User/SuperCap/music"
+        "${CMAKE_CURRENT_SOURCE_DIR}/User/SuperCap/task_manager"
+        "${CMAKE_CURRENT_SOURCE_DIR}/User/SuperCap/ws2812"
+        "${CMAKE_CURRENT_SOURCE_DIR}/User"
 )
 
 # Add project symbols (macros)
